@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "product": "Replace with a short description of your product",
+  "audience": "Replace with the people your product helps",
+  "facts": [],
+  "voice": "Concise, thoughtful, specific. No hype or invented personal experience.",
+  "examples": [],
+  "updated_at": "Replace with an ISO 8601 timestamp",
+  "sources": []
+}

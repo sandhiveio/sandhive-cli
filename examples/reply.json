@@ -1,0 +1,9 @@
+{
+  "tweet": "We shipped our first release, but finding useful conversations with potential users has been harder than building it. What has worked for other founders?",
+  "user": { "account": "your_x_handle" },
+  "externalRelies": [
+    "I write concise, friendly replies that add a concrete idea to the conversation.",
+    "I prefer plain language and specific observations over generic encouragement.",
+    "I do not invent personal experience, customer results, or product claims. Links are optional."
+  ]
+}
