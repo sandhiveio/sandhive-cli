@@ -5,6 +5,7 @@
 - [x] CLI skeleton with human-readable output and JSON results.
 - [x] Reply generation using the existing API contract; dry-run preview.
 - [x] Portable skill for context preparation, replies, and manual review.
+- [x] Local context initialization and direct conversation input with text/file flags.
 - [ ] Verify live API access and complete a real Codex and Claude Code workflow.
 - [ ] Find up to five relevant conversations with reasons and source links.
 - [ ] Draft standalone posts from verified updates and completed work.

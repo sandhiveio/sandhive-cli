@@ -1,98 +1,107 @@
 # SandHive CLI
 
-**Turn project context into useful conversations and social drafts.**
+**Draft useful X replies in your project's voice.**
 
-A CLI for people and an agent skill for tools such as Codex and Claude Code. Bring your product facts and voice, draft a useful reply, and review it before publishing.
+Bring a conversation and a few verified product facts. SandHive helps you prepare a reply to review and publish yourself — from your terminal or through an agent such as Codex or Claude Code.
 
-[Website](https://www.sandhive.io) · [Report an issue](https://github.com/sandhiveio/sandhive-cli/issues) · [Roadmap](docs/roadmap.md)
+[Website](https://www.sandhive.io) · [CLI reference](skills/sandhive/references/cli.md) · [Roadmap](docs/roadmap.md) · [Issues](https://github.com/sandhiveio/sandhive-cli/issues)
 
-> Early scaffold. Reply generation is connected to the existing API contract. Discovery, standalone posts, persistent review, and key activation are planned. No npm package has been published yet.
+> Early preview: reply drafting, local project context, and agent skill installation are available. Discovery, standalone posts, persistent review, and key activation are planned. There is no automatic publishing or npm release yet.
 
-## Get started
+## What a useful reply looks like
 
-Requires **Node.js 22 or later**. No runtime dependencies or build step.
+**Conversation:** “We shipped our first release, but finding useful conversations with potential users has been harder than building it. What has worked for other founders?”
+
+**Context:** Your product helps founders organize user feedback. Your voice is concise and practical.
+
+**Illustrative draft:** “Pick one problem your product solves and look for people describing it in their own words. Answer the question they actually asked, then use their follow-up questions to decide what to explain next.”
+
+The example shows the intended workflow, not a recorded API result. Replies should add something useful; a product link is optional.
+
+## Install
+
+Requires **Node.js 22 or later**. Install from source while the npm release is being prepared:
 
 ```sh
 git clone https://github.com/sandhiveio/sandhive-cli.git
 cd sandhive-cli
-npm install
-node bin/sandhive.js --help
-```
-
-### Preview your first request
-
-Replace `user.account` in `examples/reply.json` with your X handle without `@`, and replace the conversation and writing guidance with your own.
-
-```sh
-node bin/sandhive.js draft reply --input examples/reply.json --dry-run --json
-```
-
-This shows exactly what would be sent and makes no API request. To request a draft:
-
-```sh
-node bin/sandhive.js draft reply --input examples/reply.json
-```
-
-Generation requires network access and a service deployment that accepts your request. Tests cover mocked generation; a live empty-request check confirmed routing, but real draft generation is not yet verified. The API can return no draft. Review any generated text before publishing manually in X.
-
-To make the `sandhive` command available locally:
-
-```sh
 npm link
 sandhive --help
 ```
 
-## Use with an agent
+## Use with your agent
 
-Install the CLI as above, then copy the bundled skill into the project where your agent works:
+From the directory of the project you want to talk about, install the skill for your agent:
 
 ```sh
-sandhive skill install --agent codex --target /path/to/your-project
+sandhive skill install --agent codex --target .
 # Or:
-sandhive skill install --agent claude --target /path/to/your-project
+sandhive skill install --agent claude --target .
 ```
 
-The installer uses `.agents/skills/sandhive` for Codex and `.claude/skills/sandhive` for Claude Code. It refuses to overwrite an existing skill. The source is a single portable [SKILL.md](skills/sandhive/SKILL.md).
+Then ask:
 
-Example request to your agent:
+> Use SandHive to prepare this project's audience, verified facts, and writing voice from the available documentation. Preview the request, then draft a reply to this conversation for my review. My X handle is @your_handle. Conversation: [paste the post and relevant surrounding text].
 
-> Use SandHive to summarize this project's audience, verified facts, and writing voice. Draft a useful reply to this X conversation and show it to me for review.
+The agent prepares a compact local profile, calls the CLI, and helps you review the draft. It uses sources available in its session; access to other chats is not assumed. The same [skill](skills/sandhive/SKILL.md) is used for both agents.
 
-The agent gathers context from sources available to it. It cannot automatically access other chats or accounts. The skill guides context preparation and review; the CLI executes the API request.
+## Use from your terminal
 
-## Bring your project context
+### 1. Describe your project
 
-Use [examples/context.json](examples/context.json) as a template. Keep the product description, audience, verified facts, and voice compact and current. Save your own files under `.sandhive/`, which is ignored by this repository.
+Run this from your project's directory, replacing the example values:
 
 ```sh
-sandhive draft reply --input .sandhive/reply.json --context .sandhive/context.json --dry-run --json
+sandhive init --product "A tool for organizing user feedback" --audience "Early-stage founders" --account your_handle --voice "Concise, practical, no hype" --fact "Feedback can be grouped by topic"
 ```
 
-Inspect the summary, then omit `--dry-run` when ready. Context is passed through the API's existing writing-guidance field. Source files are not uploaded. Do not include credentials or confidential material; supplied text is sent to the hosted service. Style adherence and factual accuracy still require review.
+This creates `.sandhive/context.json` locally without an API request. Edit it as your product changes. Add only verified facts; `--fact` and `--example` can be repeated. Existing profiles are never overwritten. The default `.sandhive` directory gets its own Git ignore file.
 
-## Current commands
+### 2. Preview a reply request
 
-| Command | Status |
+```sh
+sandhive draft reply --text "We shipped our first release. How do we find useful conversations with potential users?" --context .sandhive/context.json --dry-run
+```
+
+The preview shows exactly what would be sent and makes no API call. The account saved in your context is used unless you supply `--account`.
+
+### 3. Request a draft and review it
+
+Run the same command without `--dry-run`:
+
+```sh
+sandhive draft reply --text "We shipped our first release. How do we find useful conversations with potential users?" --context .sandhive/context.json
+```
+
+Check the facts, tone, and contribution to the conversation. Edit the text and publish it manually in X when ready. The service may return no draft; that is a valid outcome.
+
+For a longer conversation, use `--file conversation.txt` instead of `--text`. You can also draft without a saved profile by passing `--account your_handle`.
+
+Only the supplied conversation, account identifier, and writing guidance are sent to the hosted service. Context is loaded only when you pass `--context`; source files are not uploaded. Keep secrets and confidential material out of requests.
+
+## For agents and scripts
+
+Add `--json` for one structured result. The existing JSON input remains available:
+
+```sh
+sandhive draft reply --input examples/reply.json --dry-run --json
+```
+
+Results distinguish a draft, no draft, a preview, and an error. Commands do not prompt, and requests are not retried automatically. See the [CLI reference](skills/sandhive/references/cli.md) for fields and exit codes, and [API notes](docs/api.md) for service details and verification status.
+
+## Troubleshooting
+
+| Result | Next step |
 | --- | --- |
-| `draft reply` | API adapter, optional context, fast mode, JSON output, and dry run |
-| `skill install` | Project-local installation for Codex or Claude Code |
-| `find` | Planned: relevant conversations with reasons |
-| `draft post` | Planned: posts from updates and completed work |
-| `review` | Planned: edits, approvals, skips, and manual handoff |
-| `auth`, `usage` | Planned: key activation, quotas, and usage |
+| `INVALID_INPUT` | Check the named field. Use exactly one of `--text`, `--file`, or `--input`; supply an account directly or in your context. |
+| `ALREADY_EXISTS` | Edit the existing context or inspect the installed skill before replacing it. |
+| `no_draft` | Review the supplied conversation or choose another. The API may not provide the exact reason. |
+| `RATE_LIMITED` | Respect `retry_after` in JSON output before trying again. |
+| `TIMEOUT` / `NETWORK_ERROR` | The request may have reached the server. Avoid repeatedly submitting the same request; see [API notes](docs/api.md). |
+| `NOT_IMPLEMENTED` | The command is planned. Use the current reply workflow; see the [roadmap](docs/roadmap.md). |
 
-Planned commands return `NOT_IMPLEMENTED` and make no requests. This version does not publish, store draft history, enforce spending limits, or authenticate with generated keys.
+## Development and release terms
 
-For agents and scripts, use `--json` and `--input <file|->`. Results have a versioned envelope and explicit errors. Requests are not retried automatically. See the [CLI reference](skills/sandhive/references/cli.md) and [API notes](docs/api.md).
+Run `npm test` for the offline test suite. Keep project files and commit messages in English.
 
-## Development
-
-```sh
-npm test
-```
-
-Tests use mocked API responses and do not call the hosted service. Keep code, documentation, issues, and commit messages in English. Contributions should include a clear description and relevant verification; see the [roadmap](docs/roadmap.md) for the next steps.
-
-## Release terms
-
-Distribution and service terms are being finalized. This repository does not currently grant an open-source license. The npm package is marked private until release terms and packaging are ready.
+Distribution and service terms are being finalized. This repository does not currently grant an open-source license; the npm package remains private until release terms are ready.

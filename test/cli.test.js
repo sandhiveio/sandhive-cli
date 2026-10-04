@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { main } from '../src/cli.js';
@@ -11,16 +11,110 @@ const input = { tweet: 'How do you find useful conversations?', user: { account:
 const context = { schema_version: 1, product: 'A project tool', audience: 'Founders',
   facts: ['The preview is local'], voice: 'Clear and concise', examples: ['A genuine writing sample'], sources: ['local/README.md'] };
 
-async function run(args, content = input, fetchImpl = async () => { throw new Error('Unexpected network request'); }) {
+async function run(args, content = input, fetchImpl = async () => { throw new Error('Unexpected network request'); }, cwd) {
   let out = '';
   let err = '';
   const exitCode = await main(args, {
     stdout: { write: value => { out += value; } },
     stderr: { write: value => { err += value; } },
-    stdin: Readable.from([typeof content === 'string' ? content : JSON.stringify(content)]), fetchImpl,
+    stdin: Readable.from([typeof content === 'string' ? content : JSON.stringify(content)]), fetchImpl, cwd,
   });
   return { exitCode, out, err, result: out ? JSON.parse(out) : undefined };
 }
+
+async function withProject(check) {
+  const path = await mkdtemp(join(tmpdir(), 'sandhive-context-test-'));
+  try { await check(path); }
+  finally {
+    assert.ok(path.startsWith(join(tmpdir(), 'sandhive-context-test-')));
+    await rm(path, { recursive: true, force: true });
+  }
+}
+
+test('first-run workflow saves context, previews it, and sends the existing API shape', async () => {
+  await withProject(async cwd => {
+    const init = await run(['init', '--product', 'Feedback organizer', '--audience', 'Founders',
+      '--account', '@builder', '--voice', 'Practical and concise', '--fact', 'Groups feedback by topic',
+      '--fact', 'Exports a summary', '--example', 'A genuine writing example', '--json'], input, undefined, cwd);
+    assert.equal(init.exitCode, 0);
+    const saved = JSON.parse(await readFile(init.result.path, 'utf8'));
+    assert.equal(saved.account, 'builder');
+    assert.deepEqual(saved.facts, ['Groups feedback by topic', 'Exports a summary']);
+    assert.deepEqual(saved.examples, ['A genuine writing example']);
+    assert.ok(Number.isFinite(Date.parse(saved.updated_at)));
+    assert.equal(await readFile(join(cwd, '.sandhive', '.gitignore'), 'utf8'), '*\n');
+    const args = ['draft', 'reply', '--text', 'How do we find useful conversations?',
+      '--context', '.sandhive/context.json', '--json'];
+    const preview = await run([...args, '--dry-run'], input, undefined, cwd);
+    assert.equal(preview.exitCode, 0);
+    assert.equal(preview.result.payload.user.account, 'builder');
+    assert.ok(preview.result.payload.externalRelies.some(value => value.includes('Groups feedback by topic')));
+    assert.ok(preview.result.payload.externalRelies.some(value => value.includes('Practical and concise')));
+    let calls = 0;
+    const live = await run(args, input, async (url, options) => {
+      calls += 1;
+      assert.equal(url, GENERATE_REPLY_URL);
+      assert.deepEqual(JSON.parse(options.body), preview.result.payload);
+      return new Response('{"reply":"Pick a specific problem and answer a relevant question."}');
+    }, cwd);
+    assert.equal(live.exitCode, 0);
+    assert.equal(live.result.status, 'draft');
+    assert.equal(calls, 1);
+    const duplicate = await run(['init', '--product', 'Replacement', '--audience', 'Other people', '--json'], input, undefined, cwd);
+    assert.equal(duplicate.result.error.code, 'ALREADY_EXISTS');
+    assert.deepEqual(JSON.parse(await readFile(init.result.path, 'utf8')), saved);
+    const override = await run([...args, '--account', '@other_builder', '--dry-run'], input, undefined, cwd);
+    assert.equal(override.result.payload.user.account, 'other_builder');
+  });
+});
+
+test('custom context locations do not get a project-wide ignore rule', async () => {
+  await withProject(async cwd => {
+    const init = await run(['init', '--product', 'Tool', '--audience', 'Founders',
+      '--context', 'profile.json', '--json'], input, undefined, cwd);
+    assert.equal(init.exitCode, 0);
+    await assert.rejects(readFile(join(cwd, '.gitignore')), error => error.code === 'ENOENT');
+    assert.equal(JSON.parse(await readFile(init.result.path, 'utf8')).voice, 'Clear, concise, and specific.');
+  });
+});
+
+test('plain text, UTF-8 files, and stdin map to the same reply input', async () => {
+  await withProject(async cwd => {
+    const conversation = 'A shipped update 👋\nWhat should we explain next?';
+    await writeFile(join(cwd, 'conversation.txt'), `\uFEFF${conversation}`, 'utf8');
+    for (const args of [['--text', conversation], ['--file', 'conversation.txt'], ['--file', '-']]) {
+      const result = await run(['draft', 'reply', ...args, '--account', '@builder', '--dry-run', '--json'],
+        conversation, undefined, cwd);
+      assert.equal(result.exitCode, 0);
+      assert.deepEqual(result.result.payload, { tweet: conversation, user: { account: 'builder' } });
+    }
+  });
+});
+
+test('saved context is only used when explicitly requested', async () => {
+  await withProject(async cwd => {
+    await run(['init', '--product', 'Local project facts', '--audience', 'Founders', '--account', 'builder', '--json'], input, undefined, cwd);
+    const result = await run(['draft', 'reply', '--text', input.tweet, '--account', 'builder', '--dry-run', '--json'], input, undefined, cwd);
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.result.payload.externalRelies, undefined);
+    const missingAccount = await run(['draft', 'reply', '--text', input.tweet, '--dry-run', '--json'], input, undefined, cwd);
+    assert.equal(missingAccount.result.error.code, 'INVALID_INPUT');
+  });
+});
+
+test('mixed input modes and invalid profile arguments fail without requests', async () => {
+  for (const args of [
+    ['draft', 'reply', '--text', 'Hello', '--file', 'conversation.txt'],
+    ['draft', 'reply', '--input', '-', '--account', 'builder'],
+    ['draft', 'reply', '--text', 'Hello', '--account', '@'],
+    ['init', '--product', 'Tool'], ['init', '--product', 'Tool', '--audience', 'Founders', '--account', '../other'],
+    ['init', '--product', 'Tool', '--audience', 'Founders', '--context', '-'],
+  ]) {
+    const result = await run([...args, '--json']);
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.result.error.code, 'INVALID_INPUT');
+  }
+});
 
 test('context uses existing fields and does not upload source metadata', () => {
   const payload = buildReplyRequest(input, context);

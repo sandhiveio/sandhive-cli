@@ -3,13 +3,20 @@
 ## Available commands
 
 ```sh
+sandhive init --product "Your product" --audience "Your audience" --account your_handle --voice "Your writing voice"
+sandhive draft reply --text "The conversation text" --context .sandhive/context.json --dry-run --json
+sandhive draft reply --file .sandhive/conversation.txt --context .sandhive/context.json --json
 sandhive draft reply --input .sandhive/reply.json --context .sandhive/context.json --json
 sandhive draft reply --input .sandhive/reply.json --dry-run --json
 sandhive skill install --agent codex --target .
 sandhive skill install --agent claude --target .
 ```
 
-`--input -` reads JSON from stdin. `--fast` forwards the API's existing fast option. Skill installation copies this folder into the selected project's skill directory and refuses to overwrite an existing installation.
+`init` requires `--product` and `--audience`. It writes `.sandhive/context.json` without a network request, or a custom path supplied with `--context`. Optional flags: `--voice`, `--account`, repeated `--fact`, and repeated `--example`. The default voice is clear, concise, and specific. Existing context is never overwritten. The default `.sandhive` directory gets a local `.gitignore`; choose appropriate version-control handling for custom locations.
+
+For replies, use exactly one of `--text`, `--file`, or `--input`. `--file -` reads plain text from stdin; `--input -` reads JSON. `--account` accepts an optional leading `@` and is available with `--text` or `--file`; when omitted, the account comes from an explicitly supplied context. With JSON input, set `user.account` in that input instead. `--fast` forwards the API's existing fast option. Context is never discovered or uploaded automatically; pass `--context` to use it.
+
+Skill installation copies this folder into the selected project's skill directory and refuses to overwrite an existing installation.
 
 ## Input
 
@@ -41,7 +48,7 @@ JSON output contains `schema_version: 1` and a `status`:
 
 Exit codes: `0` success (including no draft), `1` API/network/response failure, `2` invalid input or installation conflict, `3` planned command.
 
-Common error codes: `INVALID_INPUT`, `ALREADY_EXISTS`, `RATE_LIMITED`, `API_ERROR`, `INVALID_RESPONSE`, `NETWORK_ERROR`, `TIMEOUT`, `NOT_IMPLEMENTED`. For HTTP 429, `retry_after` preserves the server's Retry-After header, which can be seconds or an HTTP date. Other failures are not marked automatically retryable because the server may already have processed the request.
+Common error codes: `INVALID_INPUT`, `ALREADY_EXISTS`, `FILE_ERROR`, `RATE_LIMITED`, `API_ERROR`, `INVALID_RESPONSE`, `NETWORK_ERROR`, `TIMEOUT`, `NOT_IMPLEMENTED`. For HTTP 429, `retry_after` preserves the server's Retry-After header, which can be seconds or an HTTP date. Other failures are not marked automatically retryable because the server may already have processed the request.
 
 ## Planned commands
 

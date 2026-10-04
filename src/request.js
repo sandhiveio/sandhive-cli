@@ -6,6 +6,21 @@ function invalid(message) {
   throw new CliError('INVALID_INPUT', message, { exitCode: 2 });
 }
 
+export function validateContext(context) {
+  if (!context || typeof context !== 'object' || Array.isArray(context)
+      || context.schema_version !== 1 || typeof context.product !== 'string' || !context.product.trim()
+      || typeof context.audience !== 'string' || !context.audience.trim()
+      || !Array.isArray(context.facts) || !context.facts.every(fact => typeof fact === 'string')
+      || typeof context.voice !== 'string' || !context.voice.trim()
+      || (context.examples !== undefined && (!Array.isArray(context.examples)
+        || !context.examples.every(example => typeof example === 'string')))
+      || (context.account !== undefined && (typeof context.account !== 'string'
+        || !/^[a-zA-Z0-9_-]+$/.test(context.account)))) {
+    invalid('Context must follow examples/context.json (schema_version, product, audience, facts, voice; optional account).');
+  }
+  return context;
+}
+
 export function buildReplyRequest(input, context, { fast = false } = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) invalid('Input must be a JSON object.');
   if (typeof input.tweet !== 'string' || !input.tweet.trim()) invalid('Provide the conversation text in "tweet".');
@@ -28,15 +43,7 @@ export function buildReplyRequest(input, context, { fast = false } = {}) {
   const payload = { ...input, user: { ...input.user } };
   // Use the existing style field; no new server-side context contract is assumed.
   if (context !== undefined) {
-    if (!context || typeof context !== 'object' || Array.isArray(context)
-        || context.schema_version !== 1 || typeof context.product !== 'string' || !context.product.trim()
-        || typeof context.audience !== 'string' || !context.audience.trim()
-        || !Array.isArray(context.facts) || !context.facts.every(fact => typeof fact === 'string')
-        || typeof context.voice !== 'string' || !context.voice.trim()
-        || (context.examples !== undefined && (!Array.isArray(context.examples)
-          || !context.examples.every(example => typeof example === 'string')))) {
-      invalid('Context must follow examples/context.json (schema_version, product, audience, facts, voice).');
-    }
+    validateContext(context);
     const style = [
       `Project: ${context.product}. Audience: ${context.audience}.`,
       `Verified facts: ${context.facts.join('; ') || 'No product claims supplied'}. Do not invent personal experience or results.`,

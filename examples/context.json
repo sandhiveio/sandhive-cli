@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "account": "your_x_handle",
   "product": "Replace with a short description of your product",
   "audience": "Replace with the people your product helps",
   "facts": [],

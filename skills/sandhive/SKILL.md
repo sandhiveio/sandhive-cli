@@ -15,6 +15,8 @@ Use the current conversation and sources the user has made available: project do
 
 Save a compact project summary in `.sandhive/context.json`: `schema_version: 1`, `product`, `audience`, verified `facts`, `voice`, optional `examples`, `updated_at`, and `sources`. Separate verified facts from assumptions. Refresh relevant facts when sources change rather than rereading everything on every request. Keep credentials, private customer data, and raw conversations out of the summary. Send only information suitable for the hosted API. Inspect the planned payload with `--dry-run` when its contents are uncertain.
 
+For a new profile, use `sandhive init --product "..." --audience "..." --voice "..."` from the user's project directory, adding `--account` when the handle is known and repeating `--fact` for verified facts. This makes a local, Git-ignored profile without a network request. Add source metadata and writing examples to the JSON as needed. If context already exists, read and update it instead of trying to overwrite it with init. Account identifiers are optional in context, but required for a reply; ask only if the intended account is still unknown.
+
 Preserve the user's language and voice. Writing examples demonstrate style; they do not establish that the user personally had the experiences described. The installed skill contains the workflow, while the project context belongs to the user.
 
 ## Draft a reply
@@ -22,8 +24,8 @@ Preserve the user's language and voice. Writing examples demonstrate style; they
 Read [the CLI reference](references/cli.md) for inputs, outputs, and errors. Start with `sandhive --help` if the installed version is uncertain.
 
 1. Obtain the actual conversation text and the user's X account handle. Include enough surrounding conversation to understand the reply. Do not fetch a post using an invented CLI command.
-2. Write the existing API input shape to `.sandhive/reply.json`: `tweet`, `user.account`, and optional `externalRelies` writing guidance/examples. Use arrays of strings for `externalRelies`.
-3. Run `sandhive draft reply --input .sandhive/reply.json --context .sandhive/context.json --json` when live generation is within the user's requested scope.
+2. Save the conversation as a UTF-8 text file, or use `--text` for short text. Existing integrations may use `.sandhive/reply.json` with `tweet`, `user.account`, and optional `externalRelies` writing guidance/examples (string arrays).
+3. Run `sandhive draft reply --file .sandhive/conversation.txt --context .sandhive/context.json --json`, adding `--account` if the profile has no account. Use `--dry-run` for a requested preview and omit it for live generation within the user's requested scope. For existing JSON input, use `--input` instead of `--file`. Quote literal text safely; prefer files for conversation text containing shell syntax.
 4. Read the result. `no_draft` means the API did not return a draft; it does not identify the exact reason or justify repeated requests. Timeouts and network failures may have reached the server. Do not retry them automatically.
 5. Check factual claims, voice, usefulness, and any link against the supplied context. Show the draft and incorporate the user's edits. A link is optional; do not add one simply to promote the product.
 
