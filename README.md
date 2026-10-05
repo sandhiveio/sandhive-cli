@@ -6,7 +6,7 @@ Bring a conversation and a few verified product facts. SandHive helps you prepar
 
 [Website](https://www.sandhive.io) · [CLI reference](skills/sandhive/references/cli.md) · [Roadmap](docs/roadmap.md) · [Issues](https://github.com/sandhiveio/sandhive-cli/issues)
 
-> Early preview: reply drafting, local project context, and agent skill installation are available. Discovery, standalone posts, persistent review, and key activation are planned. There is no automatic publishing or npm release yet.
+> Early preview: reply drafting, local project context, and agent skill installation are available. Tweet discovery and account writing samples are available in the CLI; live search retrieval is verified, while genuine writing samples still require a backend fix. Standalone posts, persistent review, and key activation are planned. There is no automatic publishing or npm release yet.
 
 ## What a useful reply looks like
 
@@ -98,6 +98,7 @@ Results distinguish a draft, no draft, a preview, and an error. Commands do not 
 | `no_draft` | Review the supplied conversation or choose another. The API may not provide the exact reason. |
 | `RATE_LIMITED` | Respect `retry_after` in JSON output before trying again. |
 | `TIMEOUT` / `NETWORK_ERROR` | The request may have reached the server. Avoid repeatedly submitting the same request; see [API notes](docs/api.md). |
+| `INVALID_RESPONSE` | The response is malformed or contains known provider placeholder data. Do not use it as evidence or writing samples. |
 | `NOT_IMPLEMENTED` | The command is planned. Use the current reply workflow; see the [roadmap](docs/roadmap.md). |
 
 ## Development and release terms
@@ -105,3 +106,11 @@ Results distinguish a draft, no draft, a preview, and an error. Commands do not 
 Run `npm test` for the offline test suite. Keep project files and commit messages in English.
 
 Distribution and service terms are being finalized. This repository does not currently grant an open-source license; the npm package remains private until release terms are ready.
+
+## Find posts and retrieve writing samples
+
+`sandhive find --query "finding first customers lang:en" --icp sandhive --max-items 10 --json`
+
+`sandhive style --account your_handle --json`
+
+Both support --dry-run. Discovery scores against the backend's sandhive or arc profile and returns individual tweets. Save selected style samples in context examples to use them in reply drafts. See the CLI reference for JSON input and limits.

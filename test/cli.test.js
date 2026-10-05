@@ -208,7 +208,7 @@ test('UTF-8 input preserves split multibyte conversation text', async () => {
 });
 
 test('planned commands report NOT_IMPLEMENTED without fabricating results', async () => {
-  for (const args of [['find'], ['draft', 'post'], ['review'], ['auth'], ['usage']]) {
+  for (const args of [['draft', 'post'], ['review'], ['auth'], ['usage']]) {
     const result = await run([...args, '--json']);
     assert.equal(result.exitCode, 3);
     assert.equal(result.result.error.code, 'NOT_IMPLEMENTED');
@@ -244,5 +244,75 @@ test('skill installation copies all references and refuses to overwrite', async 
     // Delete only the uniquely created test directory beneath the OS temp directory.
     assert.equal(target.startsWith(join(tmpdir(), 'sandhive-skill-test-')), true);
     await rm(target, { recursive: true, force: true });
+  }
+});
+
+test('discovery previews and sends the backend contract, preserving evidence', async () => {
+  const args = ['find', '--query', 'first customers', '--query', 'manual outreach', '--icp', 'sandhive', '--max-items', '10', '--min-icp-score', '5', '--json'];
+  const preview = await run([...args, '--dry-run']);
+  assert.equal(preview.exitCode, 0);
+  assert.deepEqual(preview.result.payload, { queries: ['first customers', 'manual outreach'], icp: 'sandhive', max_items: 10, query_type: 'Latest', min_icp_score: 5 });
+  const tweets = [{ id: '123', text: 'Finding customers is hard', author: 'builder', url: 'https://x.com/builder/status/123', icp_score: 7, gate_score: 8 }];
+  const live = await run(args, input, async (url, options) => {
+    assert.equal(url, 'https://api.sandhive.io/cli/search-score-tweets');
+    assert.deepEqual(JSON.parse(options.body), preview.result.payload);
+    return new Response(JSON.stringify({ tweets, count: 1, elapsed: 2 }));
+  });
+  assert.equal(live.result.status, 'opportunities');
+  assert.deepEqual(live.result.tweets, tweets);
+  assert.equal(live.result.api.elapsed, 2);
+  const empty = await run(args, input, async () => new Response('{"tweets":[],"count":0}'));
+  assert.equal(empty.exitCode, 0);
+  assert.equal(empty.result.count, 0);
+});
+
+test('style fetch supports refresh and samples can feed reply generation', async () => {
+  const args = ['style', '--account', '@builder', '--refresh', '--max-items', '20', '--json'];
+  const preview = await run([...args, '--dry-run']);
+  assert.deepEqual(preview.result.payload, { user_id: 'builder', refresh: true, max_items: 20 });
+  const result = await run(args, input, async (url, options) => {
+    assert.equal(url, 'https://api.sandhive.io/cli/user-twitter-style');
+    assert.deepEqual(JSON.parse(options.body), preview.result.payload);
+    return new Response('{"style":"A genuine writing sample","samples":["A genuine writing sample"],"cached":false}');
+  });
+  assert.equal(result.result.status, 'style');
+  assert.equal(buildReplyRequest(input, { ...context, examples: result.result.samples }).externalRelies.at(-1), 'A genuine writing sample');
+});
+
+test('new commands accept stdin JSON and reject invalid or mixed inputs before network', async () => {
+  for (const [command, payload] of [['find', { queries: ['pain'], icp: 'arc' }], ['style', { user_id: '@builder' }]]) {
+    assert.equal((await run([command, '--input', '-', '--dry-run', '--json'], payload)).exitCode, 0);
+  }
+  for (const args of [ ['find'], ['find', '--query', 'pain', '--icp', 'custom'],
+    ['find', '--query', 'pain', '--icp', 'arc', '--max-items', '51'],
+    ['find', '--query', 'pain', '--icp', 'arc', '--query-type', 'Bad'],
+    ['find', '--query', 'pain', '--icp', 'arc', '--min-icp-score', 'NaN'],
+    ['style', '--account', '../bad'], ['style', '--account', 'builder', '--max-items', '0'],
+    ['style', '--input', '-', '--account', 'builder'] ]) {
+    assert.equal((await run([...args, '--json'])).exitCode, 2);
+  }
+});
+
+test('new methods handle malformed responses and HTTP failures', async () => {
+  for (const [args, body] of [
+    [['find', '--query', 'pain', '--icp', 'arc'], '{"tweets":[{"text":"pain"}]}'],
+    [['style', '--account', 'builder'], '{"style":"","samples":[],"cached":true}'] ]) {
+    const result = await run([...args, '--json'], input, async () => new Response(body));
+    assert.equal(result.result.error.code, 'INVALID_RESPONSE');
+  }
+  const missing = await run(['style', '--account', 'builder', '--json'], input, async () => new Response('{}', { status: 404 }));
+  assert.equal(missing.result.error.code, 'API_ERROR');
+});
+
+test('provider placeholder data is rejected for both search and voice', async () => {
+  const placeholder = 'From KaitoEasyAPI, a reminder: Thus, we returned N pieces of mock data.';
+  for (const [args, body] of [
+    [['style', '--account', 'builder'], { style: placeholder, samples: [placeholder], cached: false }],
+    [['find', '--query', 'pain', '--icp', 'sandhive'], { tweets: [{ text: placeholder, icp_score: 0 }] }]
+  ]) {
+    const result = await run([...args, '--json'], input, async () => new Response(JSON.stringify(body)));
+    assert.equal(result.exitCode, 1);
+    assert.equal(result.result.error.code, 'INVALID_RESPONSE');
+    assert.match(result.result.error.message, /placeholder/);
   }
 });

@@ -4,6 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CliError, errorResult } from './errors.js';
 import { GENERATE_REPLY_URL, buildReplyRequest, generateReply, validateContext } from './request.js';
+import { SEARCH_TWEETS_URL, USER_STYLE_URL, buildSearchRequest, buildStyleRequest, searchTweets, userStyle } from './twitter.js';
 
 const HELP = `SandHive — social drafts for people and agents
 
@@ -13,7 +14,10 @@ Usage:
   sandhive draft reply --file <file|-> [--account <handle>] [--context <file>] [--dry-run] [--json]
   sandhive draft reply --input <file|-> [--context <file>] [--fast] [--dry-run] [--json]
   sandhive skill install --agent <codex|claude> --target <project-directory> [--json]
-  sandhive find | draft post | review | auth | usage   (planned; no API calls)
+  sandhive find --query <search> --icp <sandhive|arc> [--query <search>] [--max-items <1-50>] [--query-type <Latest|Top>] [--min-icp-score <number>] [--dry-run] [--json]
+  sandhive style --account <handle> [--refresh] [--max-items <1-200>] [--dry-run] [--json]
+  sandhive find | style --input <file|-> [--dry-run] [--json]
+  sandhive draft post | review | auth | usage   (planned; no API calls)
 
 Options:
   --product <text>     Product description for init
@@ -64,6 +68,10 @@ function emit(result, json, stdout) {
   else if (result.status === 'draft') stdout.write(`${result.draft.text}\n`);
   else if (result.status === 'no_draft') stdout.write('No draft returned. Review the conversation or try another one.\n');
   else if (result.status === 'preview') stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  else if (result.status === 'style') stdout.write(`${result.style}\n`);
+  else if (result.status === 'opportunities') stdout.write(result.tweets.length
+    ? result.tweets.map(row => `@${row.author || 'unknown'} | ICP ${row.icp_score}\n${row.text}\n${row.url || ''}`).join('\n\n') + '\n'
+    : 'No matching tweets returned.\n');
   else stdout.write(`${result.message}\n`);
 }
 
@@ -76,6 +84,8 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       text: { type: 'string' }, file: { type: 'string' }, account: { type: 'string' },
       product: { type: 'string' }, audience: { type: 'string' }, voice: { type: 'string' },
       fact: { type: 'string', multiple: true }, example: { type: 'string', multiple: true },
+      query: { type: 'string', multiple: true }, icp: { type: 'string' },
+      'max-items': { type: 'string' }, 'query-type': { type: 'string' }, 'min-icp-score': { type: 'string' }, refresh: { type: 'boolean' },
       fast: { type: 'boolean' }, 'dry-run': { type: 'boolean' }, json: { type: 'boolean' },
       help: { type: 'boolean' }, version: { type: 'boolean' },
     } });
@@ -89,11 +99,27 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
     const allowed = command === 'draft reply' ? ['input', 'text', 'file', 'account', 'context', 'fast', 'dry-run', 'json']
       : command === 'init' ? ['product', 'audience', 'voice', 'fact', 'example', 'account', 'context', 'json']
       : command === 'skill install' ? ['agent', 'target', 'json'] : ['json'];
+    if (command === 'find') allowed.push('input', 'query', 'icp', 'max-items', 'query-type', 'min-icp-score', 'dry-run');
+    if (command === 'style') allowed.push('input', 'account', 'refresh', 'max-items', 'dry-run');
     for (const option of Object.keys(values)) {
       if (!allowed.includes(option)) throw new CliError('INVALID_INPUT', `Option --${option} is not supported for ${command}.`, { exitCode: 2 });
     }
     const localPath = path => path === '-' ? '-' : resolve(cwd, path);
     const account = values.account?.trim().replace(/^@/, '');
+    if (command === 'find' || command === 'style') {
+      if (values.input !== undefined && Object.keys(values).some(key => !['input', 'dry-run', 'json'].includes(key))) {
+        throw new CliError('INVALID_INPUT', 'Use either --input JSON or command flags, not both.', { exitCode: 2 });
+      }
+      const input = values.input !== undefined ? await loadJson(localPath(values.input), stdin)
+        : command === 'find' ? { queries: values.query, icp: values.icp, max_items: values['max-items'], query_type: values['query-type'], min_icp_score: values['min-icp-score'] }
+        : { user_id: account, refresh: values.refresh, max_items: values['max-items'] };
+      const payload = command === 'find' ? buildSearchRequest(input) : buildStyleRequest(input);
+      const endpoint = command === 'find' ? SEARCH_TWEETS_URL : USER_STYLE_URL;
+      const result = values['dry-run'] ? { schema_version: 1, status: 'preview', endpoint, method: 'POST', payload }
+        : await (command === 'find' ? searchTweets : userStyle)(payload, { fetchImpl });
+      emit(result, json, stdout);
+      return 0;
+    }
     if (command === 'init') {
       if (values.context === '-') throw new CliError('INVALID_INPUT', 'Use a file path for --context.', { exitCode: 2 });
       const context = validateContext({
@@ -153,7 +179,7 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       emit({ schema_version: 1, status: 'ok', message: `Installed the SandHive skill at ${target}.`, path: target }, json, stdout);
       return 0;
     }
-    if (['find', 'draft post', 'review', 'auth', 'usage'].includes(command)) {
+    if (['draft post', 'review', 'auth', 'usage'].includes(command)) {
       throw new CliError('NOT_IMPLEMENTED', `${command} is planned. No API request was sent.`, { exitCode: 3 });
     }
     throw new CliError('INVALID_INPUT', 'Unknown command. Run sandhive --help.', { exitCode: 2 });

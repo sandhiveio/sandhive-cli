@@ -52,4 +52,16 @@ Common error codes: `INVALID_INPUT`, `ALREADY_EXISTS`, `FILE_ERROR`, `RATE_LIMIT
 
 ## Planned commands
 
-`find`, `draft post`, `review`, `auth`, and `usage` return `NOT_IMPLEMENTED` and make no API calls. Persistent history, approval storage, publishing, authentication, PoW activation, and spending controls are not implemented.
+`draft post`, `review`, `auth`, and `usage` return `NOT_IMPLEMENTED` and make no API calls. Persistent history, approval storage, publishing, authentication, PoW activation, and spending controls are not implemented.
+
+## Discovery and writing samples
+
+`sandhive find --query "finding first customers lang:en" --icp sandhive --max-items 10 --query-type Latest --min-icp-score 5 --json`
+
+Repeat --query for multiple searches. ICP is required and must be sandhive or arc (predefined backend profiles). max-items is 1–50 (default 20), query-type is Latest or Top (default Latest), min-icp-score is an optional finite number in the backend's score units. JSON input uses queries (non-empty string array), icp, max_items, query_type, min_icp_score. Custom product descriptions are not accepted as ICP profiles.
+
+`sandhive style --account your_handle --max-items 40 --refresh --json`
+
+Style max-items is 1–200 (default 40). refresh is false by default. JSON input uses user_id, max_items, refresh. Both commands accept --input file or --input - instead of flags, and --dry-run previews without sending. Input JSON and command-specific flags cannot be mixed.
+
+Results: opportunities contains tweets, count, and api; style contains style, samples, cached, and api. Empty search results succeed. Missing style can return HTTP 404 (API_ERROR). Responses preserve backend metadata, including elapsed, scores, and source URLs. Neither command saves files, retrieves complete conversation threads, publishes, or applies voice to future drafts automatically. Save selected samples as context examples or externalRelies when drafting. cached is the backend's indicator; it does not guarantee freshness.

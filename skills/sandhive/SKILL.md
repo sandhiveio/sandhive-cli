@@ -1,6 +1,6 @@
 ---
 name: sandhive
-description: Prepare project context and draft useful X replies with the SandHive CLI for human review. Use when the user wants to participate in a specific conversation or set up SandHive. Conversation discovery and standalone post generation are planned.
+description: Find relevant X posts, retrieve account writing samples, prepare project context, and draft useful replies with the SandHive CLI for human review. Use for conversation discovery, social listening, reply drafting, or SandHive setup.
 ---
 
 # SandHive
@@ -18,6 +18,17 @@ Save a compact project summary in `.sandhive/context.json`: `schema_version: 1`,
 For a new profile, use `sandhive init --product "..." --audience "..." --voice "..."` from the user's project directory, adding `--account` when the handle is known and repeating `--fact` for verified facts. This makes a local, Git-ignored profile without a network request. Add source metadata and writing examples to the JSON as needed. If context already exists, read and update it instead of trying to overwrite it with init. Account identifiers are optional in context, but required for a reply; ask only if the intended account is still unknown.
 
 Preserve the user's language and voice. Writing examples demonstrate style; they do not establish that the user personally had the experiences described. The installed skill contains the workflow, while the project context belongs to the user.
+
+## Find conversations and retrieve voice
+
+Read [the CLI reference](references/cli.md) before calling discovery or style commands.
+
+1. Read product context and identify the audience, problems, alternatives, and useful contribution. Build several search angles: direct requests, first-person pain, manual workarounds, competitor frustration, or a recent relevant trigger. Use the audience's own wording.
+2. Run `sandhive find --query "..." --query "..." --icp sandhive --json` (or `arc` when appropriate). The backend only scores these two predefined products. For other products, explain that this score is not their ICP fit; evaluate retrieved evidence against their actual context yourself. Date/language restrictions belong in the query; there are no dedicated date flags.
+3. Read each returned text, author, date, URL, gate_score, and icp_score. Scores are ranking signals, not probabilities or proof of intent. Favor a concrete pain or request and a useful answer. Deduplicate by tweet ID/URL and avoid already handled posts using available local history. No server-side interaction history is provided.
+4. The API returns individual posts, not complete conversations. If a candidate depends on missing context, inspect its source using available authorized tools or request the missing context. Never invent parent posts or replies. A search returning no tweets is a valid result. Reject provider notices, mock data, and unverifiable source text; INVALID_RESPONSE may indicate the provider returned placeholder data.
+5. If genuine writing samples are needed, run `sandhive style --account handle --json`. Save selected `samples` into context `examples` or reply input `externalRelies`; a style result is not automatically saved or applied. Samples establish voice, not verified personal experience. Use `--refresh` only when a fresh fetch is needed; the backend uses Apify and may cache results.
+6. Select the strongest opportunities and draft within the user's requested scope. Keep the source URL for review. Search and style requests may cause backend scraping/model usage; do not retry ambiguous failures automatically or run an unbounded search loop.
 
 ## Draft a reply
 
@@ -37,4 +48,4 @@ Ask for a decision only when needed to finish the requested review. Provide the 
 
 ## Planned workflows
 
-Discovery, standalone posts from completed work, persistent review/history, usage limits, and key activation are placeholders. Say what is unavailable and continue with a supplied conversation or local drafting if the user wants that fallback. Never describe a local fallback as a SandHive API result.
+Full conversation retrieval, standalone posts from completed work, persistent review/history, usage limits, and key activation are placeholders. Say what is unavailable and continue with a supplied conversation or local drafting if the user wants that fallback. Never describe a local fallback as a SandHive API result.

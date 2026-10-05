@@ -1,4 +1,4 @@
 interface:
   display_name: "SandHive"
-  short_description: "Draft useful X replies with your project voice"
+  short_description: "Find X conversations and draft replies in your voice"
   default_prompt: "Use $sandhive to draft a useful reply to this X conversation for my review."

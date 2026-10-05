@@ -7,7 +7,9 @@
 - [x] Portable skill for context preparation, replies, and manual review.
 - [x] Local context initialization and direct conversation input with text/file flags.
 - [ ] Verify live API access and complete a real Codex and Claude Code workflow.
-- [ ] Find up to five relevant conversations with reasons and source links.
+- [x] Search X posts with source links and predefined sandhive/arc ICP scores.
+- [x] Retrieve account writing samples through the CLI; reject known provider placeholders.
+- [ ] Verify genuine live style samples and positive ICP qualification; inspect full conversation context.
 - [ ] Draft standalone posts from verified updates and completed work.
 - [ ] Store drafts, edits, approval of a specific version, skips, and feedback.
 - [ ] Open X for manual publication; distinguish opening from confirmed publication.

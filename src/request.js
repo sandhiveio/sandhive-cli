@@ -71,11 +71,11 @@ export function normalizeReply(response) {
   };
 }
 
-export async function generateReply(payload, { fetchImpl = globalThis.fetch, timeoutMs = 120000 } = {}) {
+export async function postJson(endpoint, payload, { fetchImpl = globalThis.fetch, timeoutMs = 120000 } = {}) {
   let response;
   let body;
   try {
-    response = await fetchImpl(GENERATE_REPLY_URL, {
+    response = await fetchImpl(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(payload),
@@ -100,5 +100,9 @@ export async function generateReply(payload, { fetchImpl = globalThis.fetch, tim
   let parsed;
   try { parsed = JSON.parse(body); }
   catch { throw new CliError('INVALID_RESPONSE', 'The API returned a non-JSON response.'); }
-  return normalizeReply(parsed);
+  return parsed;
+}
+
+export async function generateReply(payload, options) {
+  return normalizeReply(await postJson(GENERATE_REPLY_URL, payload, options));
 }
