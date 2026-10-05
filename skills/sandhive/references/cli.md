@@ -1,67 +1,54 @@
 # CLI reference
 
-## Available commands
+## Human style (required for every draft)
 
-```sh
-sandhive init --product "Your product" --audience "Your audience" --account your_handle --voice "Your writing voice"
-sandhive draft reply --text "The conversation text" --context .sandhive/context.json --dry-run --json
-sandhive draft reply --file .sandhive/conversation.txt --context .sandhive/context.json --json
-sandhive draft reply --input .sandhive/reply.json --context .sandhive/context.json --json
-sandhive draft reply --input .sandhive/reply.json --dry-run --json
-sandhive skill install --agent codex --target .
-sandhive skill install --agent claude --target .
-```
-
-`init` requires `--product` and `--audience`. It writes `.sandhive/context.json` without a network request, or a custom path supplied with `--context`. Optional flags: `--voice`, `--account`, repeated `--fact`, and repeated `--example`. The default voice is clear, concise, and specific. Existing context is never overwritten. The default `.sandhive` directory gets a local `.gitignore`; choose appropriate version-control handling for custom locations.
-
-For replies, use exactly one of `--text`, `--file`, or `--input`. `--file -` reads plain text from stdin; `--input -` reads JSON. `--account` accepts an optional leading `@` and is available with `--text` or `--file`; when omitted, the account comes from an explicitly supplied context. With JSON input, set `user.account` in that input instead. `--fast` forwards the API's existing fast option. Context is never discovered or uploaded automatically; pass `--context` to use it.
-
-Skill installation copies this folder into the selected project's skill directory and refuses to overwrite an existing installation.
-
-## Input
+Supply `--style-file <file>` containing a JSON array, or `style_samples` in request JSON or an explicit context file. At least three items are required:
 
 ```json
-{
-  "tweet": "The actual conversation text",
-  "user": { "account": "your_x_handle" },
-  "externalRelies": [
-    "A concise description of the user's voice.",
-    "A genuine writing example or additional guidance.",
-    "Another writing example or factual constraint."
-  ]
-}
+{ "text": "Original message written by the user", "source": "URL or supplied file/location", "authorship": "human" }
 ```
 
-Supported optional input fields: `externalRelies` (string array), `style_prompt` (string), `style` (string), and `fast` (boolean). The CLI requires a non-empty `tweet` and a valid `user.account`. The account field is a profile identifier, not an authentication credential.
+These are placeholders, not usable samples. Never mark generated, rewritten, or unknown-origin text as human. The CLI verifies the assertion structure, not actual authorship. Missing samples produce `INVALID_INPUT`, exit 2, before sending. Explicit request samples take precedence over context samples; invalid explicit samples do not fall back to context. Source references and authorship metadata stay local. The API receives message text through its existing `externalRelies` field. `--voice` and legacy `examples` are not an alternate sample source. Free-form request fields `externalRelies`, `style_prompt`, and `style` are rejected.
 
-With `--context`, the CLI places the product, audience, facts, voice, examples, and supplied writing guidance in `externalRelies`. Only the summary is sent; source files and `sources` metadata are not uploaded. The API has no dedicated project-context field in this version. The API may apply its own generation rules, so review the result.
+## Local context
 
-## Results
+```sh
+sandhive init --product "..." --audience "..." --account your_handle --voice "..." --fact "..."
+```
 
-JSON output contains `schema_version: 1` and a `status`:
+Creates `.sandhive/context.json`, never overwriting a profile. Add confirmed `style_samples` before drafting. Only an explicit `--context` loads it. Product/audience/facts and voice preferences supplement reply requests; source metadata is not sent. Post rewriting gets its factual material from the supplied text. News generation uses a server manifest, not local context facts.
 
-- `draft`: `draft.text` is ready for review; `api` contains the API response.
-- `no_draft`: `draft` is null; the API returned `reply: false`. This is a successful response with no draft, not proof of a particular rejection reason.
-- `preview`: the endpoint, method, and payload are shown; no request was sent.
-- `ok`: help, version, or skill installation completed.
-- `error`: `error.code`, `message`, `retryable`, and `retry_after` describe the failure.
+## Replies
 
-Exit codes: `0` success (including no draft), `1` API/network/response failure, `2` invalid input or installation conflict, `3` planned command.
+```sh
+sandhive draft reply --file conversation.txt --context .sandhive/context.json --json
+sandhive draft reply --text "..." --account your_handle --style-file style.json --dry-run --json
+sandhive draft reply --input request.json --style-file style.json --json
+```
 
-Common error codes: `INVALID_INPUT`, `ALREADY_EXISTS`, `FILE_ERROR`, `RATE_LIMITED`, `API_ERROR`, `INVALID_RESPONSE`, `NETWORK_ERROR`, `TIMEOUT`, `NOT_IMPLEMENTED`. For HTTP 429, `retry_after` preserves the server's Retry-After header, which can be seconds or an HTTP date. Other failures are not marked automatically retryable because the server may already have processed the request.
+Exactly one of text/file/input is required. File and input accept `-` for stdin; context/style files must be paths. Request JSON uses `tweet`, `user.account`, optional `style_samples`, and optional boolean `fast`. `--fast` also sets the API fast flag. Use safe literal quoting or files for shell-sensitive text.
 
-## Planned commands
+## Posts
 
-`draft post`, `review`, `auth`, and `usage` return `NOT_IMPLEMENTED` and make no API calls. Persistent history, approval storage, publishing, authentication, PoW activation, and spending controls are not implemented.
+```sh
+sandhive draft post --file update.txt --account your_handle --style-file style.json --max-length 280 --json
+sandhive draft post --account your_handle --style-file style.json --language English --max-length 280 --json
+```
 
-## Discovery and writing samples
+Text/file supplies material to `/cli/rewrite-twitter-post`; no text source uses `/cli/generate-news-twitter-post` and its server-side account manifest. JSON input accepts `user.account`, optional `post`, `max_length`, `language`, and `style_samples`. A JSON request without `post` selects manifest generation. `language` is only supported in manifest mode. Length must be an integer from 80 to 4000; omitted values use backend defaults (280 for news, 4000 for rewrite). Do not combine input with text/file or `--account` (use `user.account` in JSON).
 
-`sandhive find --query "finding first customers lang:en" --icp sandhive --max-items 10 --query-type Latest --min-icp-score 5 --json`
+## Output and errors
 
-Repeat --query for multiple searches. ICP is required and must be sandhive or arc (predefined backend profiles). max-items is 1–50 (default 20), query-type is Latest or Top (default Latest), min-icp-score is an optional finite number in the backend's score units. JSON input uses queries (non-empty string array), icp, max_items, query_type, min_icp_score. Custom product descriptions are not accepted as ICP profiles.
+`--dry-run` returns endpoint, method, and exact wire payload without sending. `--json` emits one JSON result and never prompts. `draft` contains `draft.text`, `draft.platform: x`, and raw `api` metadata; `no_draft` contains `draft: null`. No exact skip reason is inferred. `preview` describes the request. Errors contain `error.code`, message, retryability, and optional retry-after.
 
-`sandhive style --account your_handle --max-items 40 --refresh --json`
+Exit codes: 0 success including no draft; 1 API/network failure; 2 invalid input or existing destination; 3 `NOT_IMPLEMENTED`. Rate limits preserve Retry-After. Timeout/network errors may have reached the server and are not retried automatically. Requests have a 120-second timeout. No draft is published or recorded as approved.
 
-Style max-items is 1–200 (default 40). refresh is false by default. JSON input uses user_id, max_items, refresh. Both commands accept --input file or --input - instead of flags, and --dry-run previews without sending. Input JSON and command-specific flags cannot be mixed.
+## Skill installation and planned commands
 
-Results: opportunities contains tweets, count, and api; style contains style, samples, cached, and api. Empty search results succeed. Missing style can return HTTP 404 (API_ERROR). Responses preserve backend metadata, including elapsed, scores, and source URLs. Neither command saves files, retrieves complete conversation threads, publishes, or applies voice to future drafts automatically. Save selected samples as context examples or externalRelies when drafting. cached is the backend's indicator; it does not guarantee freshness.
+`sandhive skill install --agent codex|claude --target <directory>` copies the skill and references into the project's host-specific skill folder and refuses overwrite. `review`, `auth`, and `usage` return `NOT_IMPLEMENTED` without network calls.
+
+## Discovery and sample retrieval
+
+`sandhive find --query "..." --query "..." --icp sandhive --json` searches and scores posts. ICP supports sandhive/arc only. Options: max-items 1-50, query-type Latest/Top, min-icp-score numeric. `sandhive style --account handle --json` retrieves candidate messages; refresh and max-items 1-200 are optional. Both accept --input JSON, --dry-run, and --json. JSON fields: queries/icp for search, user_id for style; do not combine JSON input with command flags.
+
+Search returns opportunities/tweets with source evidence; empty results are valid. Style returns style/samples and cache metadata; it never automatically saves or applies samples. Confirm human authorship before creating local style_samples. Generated summaries cannot be samples. Provider placeholders are rejected. Requests may incur scraping/model usage; no automatic retries.

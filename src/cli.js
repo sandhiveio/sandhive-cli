@@ -3,7 +3,8 @@ import { parseArgs } from 'node:util';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CliError, errorResult } from './errors.js';
-import { GENERATE_REPLY_URL, buildReplyRequest, generateReply, validateContext } from './request.js';
+import { GENERATE_REPLY_URL, buildReplyRequest, generateReply, validateContext, buildPostRequest, humanStyle } from './request.js';
+
 import { SEARCH_TWEETS_URL, USER_STYLE_URL, buildSearchRequest, buildStyleRequest, searchTweets, userStyle } from './twitter.js';
 
 const HELP = `SandHive — social drafts for people and agents
@@ -14,22 +15,26 @@ Usage:
   sandhive draft reply --file <file|-> [--account <handle>] [--context <file>] [--dry-run] [--json]
   sandhive draft reply --input <file|-> [--context <file>] [--fast] [--dry-run] [--json]
   sandhive skill install --agent <codex|claude> --target <project-directory> [--json]
+  sandhive draft post [--text <draft> | --file <file|-> | --input <file|->] --context <file> [--json]
   sandhive find --query <search> --icp <sandhive|arc> [--query <search>] [--max-items <1-50>] [--query-type <Latest|Top>] [--min-icp-score <number>] [--dry-run] [--json]
   sandhive style --account <handle> [--refresh] [--max-items <1-200>] [--dry-run] [--json]
   sandhive find | style --input <file|-> [--dry-run] [--json]
-  sandhive draft post | review | auth | usage   (planned; no API calls)
+  sandhive review | auth | usage   (planned; no API calls)
 
 Options:
   --product <text>     Product description for init
   --audience <text>    Target audience for init
   --voice <text>       Writing voice for init (default: clear, concise, specific)
   --fact <text>        Verified fact for init; repeat to add more
-  --example <text>     Writing example for init; repeat to add more
+  --example <text>     Legacy notes for init; never used as human style samples
   --account <handle>   X handle; accepts an optional leading @
-  --text <text>        Conversation text to reply to
-  --file <file|->      Conversation text file; use - for stdin
-  --input <file|->     Reply request JSON; use - for stdin
+  --text <text>        Conversation text or post material
+  --file <file|->      Conversation/post text file; - for stdin
+  --input <file|->     Draft request JSON; use - for stdin
   --context <file>     Context JSON to use; init writes here (default: .sandhive/context.json)
+  --style-file <file>  JSON array of at least three sourced, human-authored messages
+  --max-length <n>     Post length limit (80 to 4000)
+  --language <text>    Language for server-manifest posts
   --fast              Use the API's existing fast option
   --dry-run           Preview the request without sending it
   --json              Emit one JSON result; no interactive prompts
@@ -38,6 +43,7 @@ Options:
   --help              Show help
   --version           Show version
 
+Every draft requires at least three sourced human-written style samples.
 Drafts require human review. This CLI does not publish to X.
 `;
 
@@ -81,6 +87,7 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
   try {
     const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, strict: true, options: {
       input: { type: 'string' }, context: { type: 'string' }, agent: { type: 'string' }, target: { type: 'string' },
+      'style-file': { type: 'string' }, 'max-length': { type: 'string' }, language: { type: 'string' },
       text: { type: 'string' }, file: { type: 'string' }, account: { type: 'string' },
       product: { type: 'string' }, audience: { type: 'string' }, voice: { type: 'string' },
       fact: { type: 'string', multiple: true }, example: { type: 'string', multiple: true },
@@ -96,7 +103,8 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       return 0;
     }
     const command = positionals.join(' ');
-    const allowed = command === 'draft reply' ? ['input', 'text', 'file', 'account', 'context', 'fast', 'dry-run', 'json']
+    const allowed = command === 'draft post' ? ['input', 'text', 'file', 'account', 'context', 'style-file', 'max-length', 'language', 'dry-run', 'json']
+      : command === 'draft reply' ? ['input', 'text', 'file', 'account', 'context', 'style-file', 'fast', 'dry-run', 'json']
       : command === 'init' ? ['product', 'audience', 'voice', 'fact', 'example', 'account', 'context', 'json']
       : command === 'skill install' ? ['agent', 'target', 'json'] : ['json'];
     if (command === 'find') allowed.push('input', 'query', 'icp', 'max-items', 'query-type', 'min-icp-score', 'dry-run');
@@ -144,8 +152,9 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       emit({ schema_version: 1, status: 'ok', message: `Saved context at ${path}. Review it before sending a draft request.`, path }, json, stdout);
       return 0;
     }
-    if (command === 'draft reply') {
-      if (['input', 'text', 'file'].filter(key => values[key] !== undefined).length !== 1) {
+    if (command === 'draft reply' || command === 'draft post') {
+      const post = command === 'draft post';
+      if (['input', 'text', 'file'].filter(key => values[key] !== undefined).length > 1 || (!post && ['input', 'text', 'file'].every(key => values[key] === undefined))) {
         throw new CliError('INVALID_INPUT', 'Provide exactly one of --text <conversation>, --file <file|->, or --input <file|->.', { exitCode: 2 });
       }
       if (values.input !== undefined && values.account !== undefined) {
@@ -157,12 +166,21 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
         throw new CliError('INVALID_INPUT', 'Provide --account <handle> or save an account in the context. Use letters, numbers, underscores, or hyphens, with an optional leading @ on the flag.', { exitCode: 2 });
       }
       const input = values.input !== undefined ? await loadJson(localPath(values.input), stdin)
-        : { tweet: values.text ?? await loadText(localPath(values.file), stdin),
+        : { ...((values.text !== undefined || values.file !== undefined) ? { [post ? 'post' : 'tweet']: values.text ?? await loadText(localPath(values.file), stdin) } : {}),
           user: { account: account ?? context?.account } };
-      const payload = buildReplyRequest(input, context, { fast: values.fast });
+      if (values['style-file'] !== undefined) {
+        if (values['style-file'] === '-') throw new CliError('INVALID_INPUT', 'Use a file path for --style-file.', { exitCode: 2 });
+        if (input.style_samples !== undefined) throw new CliError('INVALID_INPUT', 'Use either style_samples or --style-file.', { exitCode: 2 });
+        input.style_samples = await loadJson(localPath(values['style-file']), stdin);
+        humanStyle(input.style_samples);
+      }
+      if (values['max-length'] !== undefined) input.max_length = Number(values['max-length']);
+      if (values.language !== undefined) input.language = values.language;
+      const request = post ? buildPostRequest(input, context) : { endpoint: GENERATE_REPLY_URL, payload: buildReplyRequest(input, context, { fast: values.fast }) };
+      const { endpoint, payload } = request;
       const result = values['dry-run']
-        ? { schema_version: 1, status: 'preview', endpoint: GENERATE_REPLY_URL, method: 'POST', payload }
-        : await generateReply(payload, { fetchImpl });
+        ? { schema_version: 1, status: 'preview', endpoint, method: 'POST', payload }
+        : await generateReply(payload, { fetchImpl, endpoint, field: post ? 'post' : 'reply' });
       emit(result, json, stdout);
       return 0;
     }
@@ -179,7 +197,7 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       emit({ schema_version: 1, status: 'ok', message: `Installed the SandHive skill at ${target}.`, path: target }, json, stdout);
       return 0;
     }
-    if (['draft post', 'review', 'auth', 'usage'].includes(command)) {
+    if (['review', 'auth', 'usage'].includes(command)) {
       throw new CliError('NOT_IMPLEMENTED', `${command} is planned. No API request was sent.`, { exitCode: 3 });
     }
     throw new CliError('INVALID_INPUT', 'Unknown command. Run sandhive --help.', { exitCode: 2 });

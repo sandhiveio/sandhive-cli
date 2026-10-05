@@ -1,12 +1,12 @@
 # SandHive CLI
 
-**Draft useful X replies in your project's voice.**
+**Draft X posts and useful replies in your project's voice.**
 
 Bring a conversation and a few verified product facts. SandHive helps you prepare a reply to review and publish yourself — from your terminal or through an agent such as Codex or Claude Code.
 
 [Website](https://www.sandhive.io) · [CLI reference](skills/sandhive/references/cli.md) · [Roadmap](docs/roadmap.md) · [Issues](https://github.com/sandhiveio/sandhive-cli/issues)
 
-> Early preview: reply drafting, local project context, and agent skill installation are available. Tweet discovery and account writing samples are available in the CLI; live search retrieval is verified, while genuine writing samples still require a backend fix. Standalone posts, persistent review, and key activation are planned. There is no automatic publishing or npm release yet.
+> Early preview: post and reply drafting, local project context, and agent skill installation are available. Full conversation retrieval, persistent review, and key activation are planned. There is no automatic publishing or npm release yet.
 
 ## What a useful reply looks like
 
@@ -41,7 +41,7 @@ sandhive skill install --agent claude --target .
 
 Then ask:
 
-> Use SandHive to prepare this project's audience, verified facts, and writing voice from the available documentation. Preview the request, then draft a reply to this conversation for my review. My X handle is @your_handle. Conversation: [paste the post and relevant surrounding text].
+> Use SandHive to prepare this project's audience and verified facts from the available documentation. Derive my writing style only from original messages I wrote myself; never use AI-generated drafts. If authorship is uncertain, ask me for samples. Preview the request, then draft a reply to this conversation for my review. My X handle is @your_handle. Conversation: [paste the post and relevant surrounding text].
 
 The agent prepares a compact local profile, calls the CLI, and helps you review the draft. It uses sources available in its session; access to other chats is not assumed. The same [skill](skills/sandhive/SKILL.md) is used for both agents.
 
@@ -57,34 +57,64 @@ sandhive init --product "A tool for organizing user feedback" --audience "Early-
 
 This creates `.sandhive/context.json` locally without an API request. Edit it as your product changes. Add only verified facts; `--fact` and `--example` can be repeated. Existing profiles are never overwritten. The default `.sandhive` directory gets its own Git ignore file.
 
-### 2. Preview a reply request
+### 2. Add your human-written style samples
+
+Save at least three original messages you wrote yourself in `.sandhive/style.json`:
+
+```json
+[
+  { "text": "Paste your first original message", "source": "Your message URL or supplied file/location", "authorship": "human" },
+  { "text": "Paste your second original message", "source": "Your message URL or supplied file/location", "authorship": "human" },
+  { "text": "Paste your third original message", "source": "Your message URL or supplied file/location", "authorship": "human" }
+]
+```
+
+Replace these placeholders with your own writing. **Never use AI-generated or AI-rewritten drafts as style samples.** Publication or approval does not establish human authorship. The CLI validates your authorship assertion and source references; it cannot independently prove authorship. Missing or uncertain samples must be resolved before generation. `--voice` adds preferences; it cannot substitute for real samples. You can also store this array as `style_samples` in your context.
+
+### 3. Preview a reply request
 
 ```sh
-sandhive draft reply --text "We shipped our first release. How do we find useful conversations with potential users?" --context .sandhive/context.json --dry-run
+sandhive draft reply --text "We shipped our first release. How do we find useful conversations with potential users?" --context .sandhive/context.json --style-file .sandhive/style.json --dry-run
 ```
 
 The preview shows exactly what would be sent and makes no API call. The account saved in your context is used unless you supply `--account`.
 
-### 3. Request a draft and review it
+### 4. Request a draft and review it
 
 Run the same command without `--dry-run`:
 
 ```sh
-sandhive draft reply --text "We shipped our first release. How do we find useful conversations with potential users?" --context .sandhive/context.json
+sandhive draft reply --text "We shipped our first release. How do we find useful conversations with potential users?" --context .sandhive/context.json --style-file .sandhive/style.json
 ```
 
 Check the facts, tone, and contribution to the conversation. Edit the text and publish it manually in X when ready. The service may return no draft; that is a valid outcome.
 
-For a longer conversation, use `--file conversation.txt` instead of `--text`. You can also draft without a saved profile by passing `--account your_handle`.
+For a longer conversation, use `--file conversation.txt` instead of `--text`. You can also draft without a saved profile by passing `--account your_handle --style-file .sandhive/style.json`.
 
 Only the supplied conversation, account identifier, and writing guidance are sent to the hosted service. Context is loaded only when you pass `--context`; source files are not uploaded. Keep secrets and confidential material out of requests.
+
+## Draft a post
+
+Rewrite supplied material into a post using your human-written style:
+
+```sh
+sandhive draft post --file update.txt --context .sandhive/context.json --style-file .sandhive/style.json --max-length 280 --json
+```
+
+Use verified updates in `update.txt`. Without `--text`, `--file`, or `--input`, the CLI asks the existing news-post generator to use the account's **server-side manifest**:
+
+```sh
+sandhive draft post --account your_handle --style-file .sandhive/style.json --language English --max-length 280 --json
+```
+
+Local project facts are not uploaded to the manifest generator. It requires the server's account manifest to be configured. `--language` applies only to that mode. Add `--dry-run` to either command to inspect the request. All drafts require manual review.
 
 ## For agents and scripts
 
 Add `--json` for one structured result. The existing JSON input remains available:
 
 ```sh
-sandhive draft reply --input examples/reply.json --dry-run --json
+sandhive draft reply --input examples/reply.json --style-file .sandhive/style.json --dry-run --json
 ```
 
 Results distinguish a draft, no draft, a preview, and an error. Commands do not prompt, and requests are not retried automatically. See the [CLI reference](skills/sandhive/references/cli.md) for fields and exit codes, and [API notes](docs/api.md) for service details and verification status.
@@ -98,7 +128,6 @@ Results distinguish a draft, no draft, a preview, and an error. Commands do not 
 | `no_draft` | Review the supplied conversation or choose another. The API may not provide the exact reason. |
 | `RATE_LIMITED` | Respect `retry_after` in JSON output before trying again. |
 | `TIMEOUT` / `NETWORK_ERROR` | The request may have reached the server. Avoid repeatedly submitting the same request; see [API notes](docs/api.md). |
-| `INVALID_RESPONSE` | The response is malformed or contains known provider placeholder data. Do not use it as evidence or writing samples. |
 | `NOT_IMPLEMENTED` | The command is planned. Use the current reply workflow; see the [roadmap](docs/roadmap.md). |
 
 ## Development and release terms
@@ -107,10 +136,11 @@ Run `npm test` for the offline test suite. Keep project files and commit message
 
 Distribution and service terms are being finalized. This repository does not currently grant an open-source license; the npm package remains private until release terms are ready.
 
-## Find posts and retrieve writing samples
+## Find conversations and retrieve candidate samples
 
-`sandhive find --query "finding first customers lang:en" --icp sandhive --max-items 10 --json`
+```sh
+sandhive find --query "finding first customers" --icp sandhive --json
+sandhive style --account your_handle --json
+```
 
-`sandhive style --account your_handle --json`
-
-Both support --dry-run. Discovery scores against the backend's sandhive or arc profile and returns individual tweets. Save selected style samples in context examples to use them in reply drafts. See the CLI reference for JSON input and limits.
+Search supports sandhive/arc predefined scoring. Evaluate relevance against your own product. Style retrieves candidate messages; confirm original human authorship before adding them to your style file. Generated style summaries are never samples. See the CLI reference for limits and refresh options.

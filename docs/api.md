@@ -1,65 +1,21 @@
-# SandHive API
+# API contract
 
-Reply drafting sends a JSON request to:
+All routes use POST JSON on `https://api.sandhive.io`:
 
-```text
-POST https://api.sandhive.io/cli/generate-tweet
-Content-Type: application/json
-```
+| CLI mode | Route | Existing backend fields | Response field |
+| --- | --- | --- | --- |
+| `draft reply` | `/cli/generate-tweet` | `tweet`, `user.account`, `externalRelies`, optional `fast` | `reply` |
+| `draft post` without supplied text | `/cli/generate-news-twitter-post` | `user.account`, `externalRelies`, optional `max_length`, `language` | `post` |
+| `draft post` with supplied text | `/cli/rewrite-twitter-post` | `post`, `user.account`, `externalRelies`, optional `max_length` | `post` |
 
-Inputs and results are documented in the [CLI reference](../skills/sandhive/references/cli.md). The public request uses the existing field names, including `externalRelies`.
+The Python application exposes the corresponding routes without `/cli`; deployment must map the public prefix for all three. The reply URL was previously confirmed reachable with an empty request. New public post routes and actual paid generation have not been verified live. Offline tests verify URL selection, payloads, and response handling against the inspected Python contract.
 
-A reply response can include:
+The news generator reads the account's server-side manifest. It accepts no local topic/update/context field. The rewrite generator uses supplied `post` text. No invented server fields are sent.
 
-```json
-{
-  "reply": "A draft reply for human review.",
-  "wait": 1,
-  "icp_score": 0,
-  "cta_opportunity": 0,
-  "gate_score": 0,
-  "reply_mode": "default"
-}
-```
+`style_samples` is a local CLI field: at least three original messages, each with non-empty text/source and `authorship: human`. Only sample text is sent in `externalRelies`. Reply context supplements these samples with explicitly labeled factual context/preferences. No sample can be replaced with an AI-generated voice description. The CLI cannot independently prove authorship; callers must establish it from original sources or the user's explicit assertion.
 
-The CLI preserves the response in `api`. It does not interpret `wait` as a delay in seconds or scores as probabilities. `reply: false` means no draft was returned; the API does not always provide a specific reason.
+A successful response contains the mode's text field as a non-empty string or false. False normalizes to `no_draft`; metadata is preserved without interpreting scores as probabilities or `wait` as seconds. HTTP errors, non-JSON responses, and incorrect text fields are explicit errors. There are no automatic retries, authentication, idempotency, or spending-limit contracts yet. Inputs are processed by a hosted service; do not send secrets or confidential material.
 
-Requests have a 120-second timeout and are not retried automatically. A timeout can occur after server-side processing has started. No idempotency, authentication, or usage contract is assumed. A deployment may reject requests until access is enabled. On October 4, 2026, an empty POST returned HTTP 200 with `reply: false`; this checks routing and input handling, not successful generation. Draft generation has been tested against mocked responses only.
+## Discovery and sample retrieval
 
-Only the supplied conversation, account identifier, and writing guidance are submitted. The hosted service may process and retain request data. Use summaries appropriate for that service and avoid including secrets or confidential source material.
-
-## Twitter discovery and style
-
-POST https://api.sandhive.io/cli/search-score-tweets accepts queries, icp (sandhive or arc), max_items, query_type, and optional min_icp_score. It returns tweets, count, icp, queries, elapsed. Tweet rows include id, text, author, url, created_at, query, icp_profile, gate_score, icp_score, cta_opportunity. These are individual posts, not full conversation trees.
-
-POST https://api.sandhive.io/cli/user-twitter-style accepts user_id, refresh, max_items. It returns user_id, style, samples, cached, elapsed; no tweets produces HTTP 404. The updated Python backend uses Apify for both methods and model scoring for discovery. Provider credentials remain on the backend.
-
-The CLI uses the existing /cli gateway prefix for both new routes. Local source inspection confirms the Flask route contracts, and both gateway routes were checked live on October 5, 2026. Mocked CLI tests do not establish live provider availability. Requests share the 120-second timeout and no automatic retries.
-
-Live verification on October 5, 2026: both gateway routes returned HTTP 400 for empty input. A one-item search returned a tweet with source URL and zero gate/ICP scores; that validates retrieval, not positive qualification. Style retrieval for sandhiveio returned a KaitoEasyAPI placeholder rather than account posts. The CLI now rejects this known placeholder with INVALID_RESPONSE in either endpoint. Genuine style retrieval remains unverified; the backend should filter provider placeholders before caching or scoring them.
-
-### Discovery request example
-
-```json
-{
-  "queries": ["\"first customers\" lang:en", "\"manual outreach\" lang:en"],
-  "icp": "sandhive",
-  "max_items": 10,
-  "query_type": "Latest",
-  "min_icp_score": 5
-}
-```
-
-The optional minimum is measured in the backend's score units. The CLI does not convert scores into percentages. Use `--dry-run` to inspect the request without starting Apify or model calls.
-
-### Style request example
-
-```json
-{
-  "user_id": "your_handle",
-  "refresh": false,
-  "max_items": 40
-}
-```
-
-To apply returned samples, place selected genuine samples in `.sandhive/context.json` under `examples`, then pass `--context` when drafting. Neither discovery nor style retrieval automatically updates that file. An account handle identifies a public profile; it does not authenticate the user's X account.
+POST /cli/search-score-tweets uses queries, icp (sandhive/arc), optional max_items, query_type, and min_icp_score. POST /cli/user-twitter-style uses user_id, optional refresh and max_items. Search preserves post evidence; scores are not probabilities. Style returns candidate samples and cache metadata. Confirm original human authorship before using samples. Generated summaries are not samples. Shared postJson handles HTTP and timeout errors.

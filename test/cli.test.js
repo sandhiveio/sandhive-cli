@@ -7,9 +7,10 @@ import { join } from 'node:path';
 import { main } from '../src/cli.js';
 import { GENERATE_REPLY_URL, buildReplyRequest, generateReply } from '../src/request.js';
 
-const input = { tweet: 'How do you find useful conversations?', user: { account: 'example_builder' } };
+const samples = ['First original message', 'Second original message', 'Third original message'].map(text => ({ text, source: 'test fixture: human authorship assertion', authorship: 'human' }));
+const input = { tweet: 'How do you find useful conversations?', user: { account: 'example_builder' }, style_samples: samples };
 const context = { schema_version: 1, product: 'A project tool', audience: 'Founders',
-  facts: ['The preview is local'], voice: 'Clear and concise', examples: ['A genuine writing sample'], sources: ['local/README.md'] };
+  style_samples: samples, facts: ['The preview is local'], voice: 'Clear and concise', examples: ['A genuine writing sample'], sources: ['local/README.md'] };
 
 async function run(args, content = input, fetchImpl = async () => { throw new Error('Unexpected network request'); }, cwd) {
   let out = '';
@@ -41,6 +42,8 @@ test('first-run workflow saves context, previews it, and sends the existing API 
     assert.equal(saved.account, 'builder');
     assert.deepEqual(saved.facts, ['Groups feedback by topic', 'Exports a summary']);
     assert.deepEqual(saved.examples, ['A genuine writing example']);
+    saved.style_samples = samples;
+    await writeFile(init.result.path, JSON.stringify(saved));
     assert.ok(Number.isFinite(Date.parse(saved.updated_at)));
     assert.equal(await readFile(join(cwd, '.sandhive', '.gitignore'), 'utf8'), '*\n');
     const args = ['draft', 'reply', '--text', 'How do we find useful conversations?',
@@ -83,10 +86,11 @@ test('plain text, UTF-8 files, and stdin map to the same reply input', async () 
     const conversation = 'A shipped update 👋\nWhat should we explain next?';
     await writeFile(join(cwd, 'conversation.txt'), `\uFEFF${conversation}`, 'utf8');
     for (const args of [['--text', conversation], ['--file', 'conversation.txt'], ['--file', '-']]) {
-      const result = await run(['draft', 'reply', ...args, '--account', '@builder', '--dry-run', '--json'],
+      await writeFile(join(cwd, 'style.json'), JSON.stringify(samples));
+      const result = await run(['draft', 'reply', '--style-file', 'style.json', ...args, '--account', '@builder', '--dry-run', '--json'],
         conversation, undefined, cwd);
       assert.equal(result.exitCode, 0);
-      assert.deepEqual(result.result.payload, { tweet: conversation, user: { account: 'builder' } });
+      assert.deepEqual(result.result.payload, { tweet: conversation, user: { account: 'builder' }, externalRelies: samples.map(s => s.text) });
     }
   });
 });
@@ -95,8 +99,8 @@ test('saved context is only used when explicitly requested', async () => {
   await withProject(async cwd => {
     await run(['init', '--product', 'Local project facts', '--audience', 'Founders', '--account', 'builder', '--json'], input, undefined, cwd);
     const result = await run(['draft', 'reply', '--text', input.tweet, '--account', 'builder', '--dry-run', '--json'], input, undefined, cwd);
-    assert.equal(result.exitCode, 0);
-    assert.equal(result.result.payload.externalRelies, undefined);
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.result.error.code, 'INVALID_INPUT');
     const missingAccount = await run(['draft', 'reply', '--text', input.tweet, '--dry-run', '--json'], input, undefined, cwd);
     assert.equal(missingAccount.result.error.code, 'INVALID_INPUT');
   });
@@ -120,7 +124,7 @@ test('context uses existing fields and does not upload source metadata', () => {
   const payload = buildReplyRequest(input, context);
   assert.equal(payload.tweet, input.tweet);
   assert.deepEqual(payload.user, input.user);
-  assert.equal(payload.externalRelies.length, 4);
+  assert.equal(payload.externalRelies.length, 5);
   assert.ok(payload.externalRelies.some(value => value.includes('A project tool')));
   assert.ok(payload.externalRelies.some(value => value.includes('Clear and concise')));
   assert.equal(JSON.stringify(payload).includes('local/README.md'), false);
@@ -135,11 +139,9 @@ test('invalid account, style array, unknown fields, and context fail before a re
   assert.throws(() => buildReplyRequest(input, { ...context, facts: null }), error => error.code === 'INVALID_INPUT');
 });
 
-test('style guidance remains intact and fast mode forwards the existing field', () => {
-  const payload = buildReplyRequest({ ...input, style_prompt: 'My writing guidance' }, context, { fast: true });
-  assert.ok(payload.externalRelies.includes('My writing guidance'));
-  assert.equal(payload.style_prompt, undefined);
-  assert.equal(payload.fast, true);
+test('unverified legacy style is rejected and fast mode forwards the existing field', () => {
+  assert.throws(() => buildReplyRequest({ ...input, style_prompt: 'Invented AI style' }, context), error => error.code === 'INVALID_INPUT');
+  assert.equal(buildReplyRequest(input, context, { fast: true }).fast, true);
 });
 
 test('reply request uses the exact endpoint and preserves API metadata', async () => {
@@ -193,7 +195,7 @@ test('dry run is valid JSON and makes no network request', async () => {
   assert.equal(result.exitCode, 0);
   assert.equal(result.err, '');
   assert.equal(result.result.status, 'preview');
-  assert.deepEqual(result.result.payload, input);
+  assert.deepEqual(result.result.payload, buildReplyRequest(input));
 });
 
 test('UTF-8 input preserves split multibyte conversation text', async () => {
@@ -208,7 +210,7 @@ test('UTF-8 input preserves split multibyte conversation text', async () => {
 });
 
 test('planned commands report NOT_IMPLEMENTED without fabricating results', async () => {
-  for (const args of [['draft', 'post'], ['review'], ['auth'], ['usage']]) {
+  for (const args of [['review'], ['auth'], ['usage']]) {
     const result = await run([...args, '--json']);
     assert.equal(result.exitCode, 3);
     assert.equal(result.result.error.code, 'NOT_IMPLEMENTED');
@@ -247,6 +249,61 @@ test('skill installation copies all references and refuses to overwrite', async 
   }
 });
 
+test('post generation and rewriting send human samples using the existing routes', async () => {
+  await withProject(async cwd => {
+    await writeFile(join(cwd, 'style.json'), JSON.stringify(samples));
+    for (const rewrite of [false, true]) {
+      const args = ['draft', 'post', '--account', 'builder', '--style-file', 'style.json', '--max-length', '280', '--json', ...(rewrite ? ['--text', 'We shipped a faster export.'] : ['--language', 'English'])];
+      const preview = await run([...args, '--dry-run'], input, undefined, cwd);
+      assert.equal(preview.exitCode, 0);
+      assert.equal(preview.result.endpoint, `https://api.sandhive.io/cli/${rewrite ? 'rewrite-twitter-post' : 'generate-news-twitter-post'}`);
+      assert.deepEqual(preview.result.payload.externalRelies, samples.map(s => s.text));
+      assert.equal(preview.result.payload.style_samples, undefined);
+      let calls = 0;
+      const live = await run(args, input, async (url, options) => {
+        calls++;
+        assert.equal(url, preview.result.endpoint);
+        assert.deepEqual(JSON.parse(options.body), preview.result.payload);
+        return new Response(JSON.stringify({ post: 'A post draft', wait: 1 }));
+      }, cwd);
+      assert.equal(calls, 1);
+      assert.equal(live.result.draft.text, 'A post draft');
+    }
+  });
+});
+
+test('missing, unknown, and AI authorship fail before any API call for posts and replies', async () => {
+  for (const style_samples of [undefined, [], samples.slice(0, 2), samples.map(s => ({ ...s, authorship: 'ai' })), samples.map(s => ({ ...s, source: '' }))]) {
+    for (const kind of ['post', 'reply']) {
+      const result = await run(['draft', kind, '--input', '-', '--json'], kind === 'post' ? { user: input.user, style_samples } : { ...input, style_samples });
+      assert.equal(result.exitCode, 2);
+      assert.equal(result.result.error.code, 'INVALID_INPUT');
+    }
+  }
+});
+
+test('post no-draft and errors retain the shared response contract', async () => {
+  await withProject(async cwd => {
+    await writeFile(join(cwd, 'style.json'), JSON.stringify(samples));
+    const args = ['draft', 'post', '--account', 'builder', '--style-file', 'style.json', '--json'];
+    const empty = await run(args, input, async () => new Response('{"post":false,"wait":1}'), cwd);
+    assert.equal(empty.result.status, 'no_draft');
+    const bad = await run(args, input, async () => new Response('{"reply":"wrong schema"}'), cwd);
+    assert.equal(bad.result.error.code, 'INVALID_RESPONSE');
+    const invalidLength = await run([...args, '--max-length', '20'], input, undefined, cwd);
+    assert.equal(invalidLength.exitCode, 2);
+  });
+});
+
+test('explicit invalid samples never fall back to valid context samples', () => {
+  for (const style_samples of [null, [], [{ text: 'AI draft', source: 'generated', authorship: 'ai' }]]) {
+    assert.throws(() => buildReplyRequest({ ...input, style_samples }, context), error => error.code === 'INVALID_INPUT');
+  }
+  const payload = buildReplyRequest(input, context);
+  assert.equal(JSON.stringify(payload).includes('test fixture:'), false);
+  assert.equal(JSON.stringify(payload).includes('A genuine writing sample'), false);
+});
+
 test('discovery previews and sends the backend contract, preserving evidence', async () => {
   const args = ['find', '--query', 'first customers', '--query', 'manual outreach', '--icp', 'sandhive', '--max-items', '10', '--min-icp-score', '5', '--json'];
   const preview = await run([...args, '--dry-run']);
@@ -276,7 +333,7 @@ test('style fetch supports refresh and samples can feed reply generation', async
     return new Response('{"style":"A genuine writing sample","samples":["A genuine writing sample"],"cached":false}');
   });
   assert.equal(result.result.status, 'style');
-  assert.equal(buildReplyRequest(input, { ...context, examples: result.result.samples }).externalRelies.at(-1), 'A genuine writing sample');
+  assert.equal(buildReplyRequest(input, { ...context, examples: result.result.samples }).externalRelies.includes('A genuine writing sample'), false);
 });
 
 test('new commands accept stdin JSON and reject invalid or mixed inputs before network', async () => {
