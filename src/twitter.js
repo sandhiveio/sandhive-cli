@@ -1,5 +1,5 @@
 import { CliError } from './errors.js';
-import { postJson } from './request.js';
+import { postJson, fastValue } from './request.js';
 
 export const SEARCH_TWEETS_URL = 'https://api.sandhive.io/cli/search-score-tweets';
 export const USER_STYLE_URL = 'https://api.sandhive.io/cli/user-twitter-style';
@@ -23,12 +23,12 @@ function rejectProviderPlaceholder(text) {
 }
 export function buildSearchRequest(input) {
   object(input);
-  fields(input, ['queries', 'icp', 'max_items', 'query_type', 'min_icp_score']);
+  fields(input, ['queries', 'icp', 'max_items', 'query_type', 'min_icp_score', 'fast']);
   if (!Array.isArray(input.queries) || !input.queries.length || !input.queries.every(q => typeof q === 'string' && q.trim())) invalid('Provide one or more non-empty queries.');
   if (!['sandhive', 'arc'].includes(input.icp)) invalid('icp must be sandhive or arc; custom product scoring is not supported by this API.');
   const query_type = input.query_type ?? 'Latest';
   if (!['Latest', 'Top'].includes(query_type)) invalid('query_type must be Latest or Top.');
-  const payload = { queries: input.queries.map(q => q.trim()), icp: input.icp, max_items: count(input.max_items, 20, 50), query_type };
+  const payload = { fast: fastValue(input.fast), queries: input.queries.map(q => q.trim()), icp: input.icp, max_items: count(input.max_items, 20, 50), query_type };
   if (input.min_icp_score !== undefined) {
     if (input.min_icp_score === null || input.min_icp_score === '' || typeof input.min_icp_score === 'boolean' || !Number.isFinite(Number(input.min_icp_score))) invalid('min_icp_score must be a finite number.');
     payload.min_icp_score = Number(input.min_icp_score);
@@ -37,11 +37,11 @@ export function buildSearchRequest(input) {
 }
 export function buildStyleRequest(input) {
   object(input);
-  fields(input, ['user_id', 'refresh', 'max_items']);
+  fields(input, ['user_id', 'refresh', 'max_items', 'fast']);
   const user_id = typeof input.user_id === 'string' ? input.user_id.trim().replace(/^@/, '') : '';
   if (!/^[a-zA-Z0-9_-]+$/.test(user_id)) invalid('Provide a valid account handle.');
   if (input.refresh !== undefined && typeof input.refresh !== 'boolean') invalid('refresh must be a boolean.');
-  return { user_id, refresh: input.refresh ?? false, max_items: count(input.max_items, 40, 200) };
+  return { fast: fastValue(input.fast), user_id, refresh: input.refresh ?? false, max_items: count(input.max_items, 40, 200) };
 }
 export async function searchTweets(payload, options) {
   const api = await postJson(SEARCH_TWEETS_URL, payload, options);

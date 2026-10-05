@@ -144,3 +144,9 @@ sandhive style --account your_handle --json
 ```
 
 Search supports sandhive/arc predefined scoring. Evaluate relevance against your own product. Style retrieves candidate messages; confirm original human authorship before adding them to your style file. Generated style summaries are never samples. See the CLI reference for limits and refresh options.
+
+## Fast mode and request timeout
+
+All five API requests send numeric `"fast": 1` by default. This requests faster generation with slightly lower quality. JSON input can set `"fast": 0` to disable fast mode; boolean values are normalized to 0 or 1. The reply `--fast` flag explicitly enables the default mode.
+
+The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Requests are not retried automatically. A server or proxy may enforce its own shorter timeout.

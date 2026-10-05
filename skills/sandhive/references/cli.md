@@ -26,7 +26,7 @@ sandhive draft reply --text "..." --account your_handle --style-file style.json 
 sandhive draft reply --input request.json --style-file style.json --json
 ```
 
-Exactly one of text/file/input is required. File and input accept `-` for stdin; context/style files must be paths. Request JSON uses `tweet`, `user.account`, optional `style_samples`, and optional boolean `fast`. `--fast` also sets the API fast flag. Use safe literal quoting or files for shell-sensitive text.
+Exactly one of text/file/input is required. File and input accept `-` for stdin; context/style files must be paths. Request JSON uses `tweet`, `user.account`, optional `style_samples`, and optional `fast` (0 or 1; boolean values also accepted). `fast: 1` is the default; `--fast` also enables it. Use safe literal quoting or files for shell-sensitive text.
 
 ## Posts
 
@@ -41,7 +41,7 @@ Text/file supplies material to `/cli/rewrite-twitter-post`; no text source uses 
 
 `--dry-run` returns endpoint, method, and exact wire payload without sending. `--json` emits one JSON result and never prompts. `draft` contains `draft.text`, `draft.platform: x`, and raw `api` metadata; `no_draft` contains `draft: null`. No exact skip reason is inferred. `preview` describes the request. Errors contain `error.code`, message, retryability, and optional retry-after.
 
-Exit codes: 0 success including no draft; 1 API/network failure; 2 invalid input or existing destination; 3 `NOT_IMPLEMENTED`. Rate limits preserve Retry-After. Timeout/network errors may have reached the server and are not retried automatically. Requests have a 120-second timeout. No draft is published or recorded as approved.
+Exit codes: 0 success including no draft; 1 API/network failure; 2 invalid input or existing destination; 3 `NOT_IMPLEMENTED`. Rate limits preserve Retry-After. Timeout/network errors may have reached the server and are not retried automatically. Requests have a 20-minute timeout. No draft is published or recorded as approved.
 
 ## Skill installation and planned commands
 
@@ -52,3 +52,9 @@ Exit codes: 0 success including no draft; 1 API/network failure; 2 invalid input
 `sandhive find --query "..." --query "..." --icp sandhive --json` searches and scores posts. ICP supports sandhive/arc only. Options: max-items 1-50, query-type Latest/Top, min-icp-score numeric. `sandhive style --account handle --json` retrieves candidate messages; refresh and max-items 1-200 are optional. Both accept --input JSON, --dry-run, and --json. JSON fields: queries/icp for search, user_id for style; do not combine JSON input with command flags.
 
 Search returns opportunities/tweets with source evidence; empty results are valid. Style returns style/samples and cache metadata; it never automatically saves or applies samples. Confirm human authorship before creating local style_samples. Generated summaries cannot be samples. Provider placeholders are rejected. Requests may incur scraping/model usage; no automatic retries.
+
+## Fast mode and request timeout
+
+All five API requests send numeric `"fast": 1` by default. This requests faster generation with slightly lower quality. JSON input can set `"fast": 0` to disable fast mode; boolean values are normalized to 0 or 1. The reply `--fast` flag explicitly enables the default mode.
+
+The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Requests are not retried automatically. A server or proxy may enforce its own shorter timeout.

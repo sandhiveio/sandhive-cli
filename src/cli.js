@@ -35,7 +35,7 @@ Options:
   --style-file <file>  JSON array of at least three sourced, human-authored messages
   --max-length <n>     Post length limit (80 to 4000)
   --language <text>    Language for server-manifest posts
-  --fast              Use the API's existing fast option
+  --fast              Use fast mode (already enabled by default; slightly lower quality)
   --dry-run           Preview the request without sending it
   --json              Emit one JSON result; no interactive prompts
   --agent <name>      Skill installation target: codex or claude

@@ -19,3 +19,9 @@ A successful response contains the mode's text field as a non-empty string or fa
 ## Discovery and sample retrieval
 
 POST /cli/search-score-tweets uses queries, icp (sandhive/arc), optional max_items, query_type, and min_icp_score. POST /cli/user-twitter-style uses user_id, optional refresh and max_items. Search preserves post evidence; scores are not probabilities. Style returns candidate samples and cache metadata. Confirm original human authorship before using samples. Generated summaries are not samples. Shared postJson handles HTTP and timeout errors.
+
+## Fast mode and request timeout
+
+All five API requests send numeric `"fast": 1` by default. This requests faster generation with slightly lower quality. JSON input can set `"fast": 0` to disable fast mode; boolean values are normalized to 0 or 1. The reply `--fast` flag explicitly enables the default mode.
+
+The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Requests are not retried automatically. A server or proxy may enforce its own shorter timeout.

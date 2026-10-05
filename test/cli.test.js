@@ -5,7 +5,7 @@ import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { main } from '../src/cli.js';
-import { GENERATE_REPLY_URL, buildReplyRequest, generateReply } from '../src/request.js';
+import { GENERATE_REPLY_URL, buildReplyRequest, generateReply, REQUEST_TIMEOUT_MS, postJson } from '../src/request.js';
 
 const samples = ['First original message', 'Second original message', 'Third original message'].map(text => ({ text, source: 'test fixture: human authorship assertion', authorship: 'human' }));
 const input = { tweet: 'How do you find useful conversations?', user: { account: 'example_builder' }, style_samples: samples };
@@ -90,7 +90,7 @@ test('plain text, UTF-8 files, and stdin map to the same reply input', async () 
       const result = await run(['draft', 'reply', '--style-file', 'style.json', ...args, '--account', '@builder', '--dry-run', '--json'],
         conversation, undefined, cwd);
       assert.equal(result.exitCode, 0);
-      assert.deepEqual(result.result.payload, { tweet: conversation, user: { account: 'builder' }, externalRelies: samples.map(s => s.text) });
+      assert.deepEqual(result.result.payload, { tweet: conversation, user: { account: 'builder' }, externalRelies: samples.map(s => s.text), fast: 1 });
     }
   });
 });
@@ -141,7 +141,7 @@ test('invalid account, style array, unknown fields, and context fail before a re
 
 test('unverified legacy style is rejected and fast mode forwards the existing field', () => {
   assert.throws(() => buildReplyRequest({ ...input, style_prompt: 'Invented AI style' }, context), error => error.code === 'INVALID_INPUT');
-  assert.equal(buildReplyRequest(input, context, { fast: true }).fast, true);
+  assert.equal(buildReplyRequest(input, context, { fast: true }).fast, 1);
 });
 
 test('reply request uses the exact endpoint and preserves API metadata', async () => {
@@ -151,7 +151,7 @@ test('reply request uses the exact endpoint and preserves API metadata', async (
     assert.equal(url, GENERATE_REPLY_URL);
     assert.equal(options.method, 'POST');
     assert.equal(options.redirect, 'error');
-    assert.deepEqual(JSON.parse(options.body), input);
+    assert.deepEqual(JSON.parse(options.body), { fast: 1, ...input });
     return new Response(JSON.stringify({ reply: 'Start with one relevant conversation.', wait: 1, gate_score: 7 }));
   } });
   assert.equal(calls, 1);
@@ -308,7 +308,7 @@ test('discovery previews and sends the backend contract, preserving evidence', a
   const args = ['find', '--query', 'first customers', '--query', 'manual outreach', '--icp', 'sandhive', '--max-items', '10', '--min-icp-score', '5', '--json'];
   const preview = await run([...args, '--dry-run']);
   assert.equal(preview.exitCode, 0);
-  assert.deepEqual(preview.result.payload, { queries: ['first customers', 'manual outreach'], icp: 'sandhive', max_items: 10, query_type: 'Latest', min_icp_score: 5 });
+  assert.deepEqual(preview.result.payload, { fast: 1, queries: ['first customers', 'manual outreach'], icp: 'sandhive', max_items: 10, query_type: 'Latest', min_icp_score: 5 });
   const tweets = [{ id: '123', text: 'Finding customers is hard', author: 'builder', url: 'https://x.com/builder/status/123', icp_score: 7, gate_score: 8 }];
   const live = await run(args, input, async (url, options) => {
     assert.equal(url, 'https://api.sandhive.io/cli/search-score-tweets');
@@ -326,7 +326,7 @@ test('discovery previews and sends the backend contract, preserving evidence', a
 test('style fetch supports refresh and samples can feed reply generation', async () => {
   const args = ['style', '--account', '@builder', '--refresh', '--max-items', '20', '--json'];
   const preview = await run([...args, '--dry-run']);
-  assert.deepEqual(preview.result.payload, { user_id: 'builder', refresh: true, max_items: 20 });
+  assert.deepEqual(preview.result.payload, { fast: 1, user_id: 'builder', refresh: true, max_items: 20 });
   const result = await run(args, input, async (url, options) => {
     assert.equal(url, 'https://api.sandhive.io/cli/user-twitter-style');
     assert.deepEqual(JSON.parse(options.body), preview.result.payload);
@@ -372,4 +372,40 @@ test('provider placeholder data is rejected for both search and voice', async ()
     assert.equal(result.result.error.code, 'INVALID_RESPONSE');
     assert.match(result.result.error.message, /placeholder/);
   }
+});
+
+test('all five endpoint requests default to numeric fast mode', async () => {
+  for (const [kind, content, body] of [
+    ['reply', input, { reply: 'Reply' }],
+    ['post', { user: input.user, style_samples: samples }, { post: 'Post' }],
+    ['post', { user: input.user, style_samples: samples, post: 'Update' }, { post: 'Post' }],
+    ['find', { queries: ['pain'], icp: 'sandhive' }, { tweets: [] }],
+    ['style', { user_id: 'builder' }, { style: 'Candidate', samples: ['Candidate'], cached: true }],
+  ]) {
+    const args = kind === 'reply' || kind === 'post' ? ['draft', kind] : [kind];
+    const preview = await run([...args, '--input', '-', '--dry-run', '--json'], content);
+    assert.equal(preview.result.payload.fast, 1);
+    const live = await run([...args, '--input', '-', '--json'], content, async (url, options) => {
+      assert.equal(JSON.parse(options.body).fast, 1);
+      return new Response(JSON.stringify(body));
+    });
+    assert.equal(live.exitCode, 0);
+  }
+});
+
+test('shared requests use a 20-minute timeout covering response body reads', async () => {
+  const original = AbortSignal.timeout;
+  const durations = [];
+  AbortSignal.timeout = duration => { durations.push(duration); return new AbortController().signal; };
+  try {
+    await postJson(GENERATE_REPLY_URL, {}, { fetchImpl: async () => new Response('{}') });
+    assert.deepEqual(durations, [1200000]);
+    assert.equal(REQUEST_TIMEOUT_MS, 1200000);
+  } finally { AbortSignal.timeout = original; }
+  await assert.rejects(postJson(GENERATE_REPLY_URL, {}, { timeoutMs: 1, fetchImpl: async (url, options) => ({
+    text: () => new Promise((resolve, reject) => {
+      options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true });
+      setTimeout(() => resolve('{}'), 30);
+    }),
+  }) }), error => error.code === 'TIMEOUT');
 });
