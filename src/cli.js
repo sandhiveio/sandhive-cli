@@ -2,6 +2,7 @@ import { readFile, writeFile, cp, mkdir, access } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BETA_NOTICE } from './updates.js';
 import { CliError, errorResult } from './errors.js';
 import { GENERATE_REPLY_URL, buildReplyRequest, generateReply, validateContext, buildPostRequest, humanStyle } from './request.js';
 
@@ -70,7 +71,7 @@ async function loadJson(path, stdin) {
 }
 
 function emit(result, json, stdout) {
-  if (json) stdout.write(`${JSON.stringify(result)}\n`);
+  if (json) stdout.write(`${JSON.stringify({ ...result, notice: BETA_NOTICE })}\n`);
   else if (result.status === 'draft') stdout.write(`${result.draft.text}\n`);
   else if (result.status === 'no_draft') stdout.write('No draft returned. Review the conversation or try another one.\n');
   else if (result.status === 'preview') stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -84,6 +85,7 @@ function emit(result, json, stdout) {
 export async function main(argv, { stdout = process.stdout, stderr = process.stderr,
   stdin = process.stdin, fetchImpl = globalThis.fetch, cwd = process.cwd() } = {}) {
   let json = argv.includes('--json');
+  if (!json) stderr.write(`${BETA_NOTICE}\n`);
   try {
     const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, strict: true, options: {
       input: { type: 'string' }, context: { type: 'string' }, agent: { type: 'string' }, target: { type: 'string' },
@@ -204,7 +206,7 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
   } catch (error) {
     if (error.code?.startsWith('ERR_PARSE_ARGS')) error = new CliError('INVALID_INPUT', error.message, { exitCode: 2 });
     const result = errorResult(error);
-    if (json) stdout.write(`${JSON.stringify(result)}\n`);
+    if (json) stdout.write(`${JSON.stringify({ ...result, notice: BETA_NOTICE })}\n`);
     else stderr.write(`${result.error.code}: ${result.error.message}\n`);
     return error.exitCode || 1;
   }

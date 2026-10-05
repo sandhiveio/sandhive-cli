@@ -409,3 +409,18 @@ test('shared requests use a 20-minute timeout covering response body reads', asy
     }),
   }) }), error => error.code === 'TIMEOUT');
 });
+
+test('beta notice is present in JSON without breaking structured output', async () => {
+  const result = await run(['--help', '--json']);
+  assert.match(result.result.notice, /beta and active development/);
+  assert.equal(result.err, '');
+  const error = await run(['unknown', '--json']);
+  assert.match(error.result.notice, /Update your checkout/);
+});
+
+test('human output includes the beta notice on stderr', async () => {
+  let out = '', err = '';
+  await main(['--version'], { stdout: { write: s => { out += s; } }, stderr: { write: s => { err += s; } } });
+  assert.equal(out.trim(), '0.1.0');
+  assert.match(err, /beta and active development/);
+});

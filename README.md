@@ -1,5 +1,7 @@
 # SandHive CLI
 
+> **Beta - active development. Update this repository before using the CLI.** Commands and API contracts may change.
+
 **Draft X posts and useful replies in your project's voice.**
 
 Bring a conversation and a few verified product facts. SandHive helps you prepare a reply to review and publish yourself — from your terminal or through an agent such as Codex or Claude Code.
@@ -28,6 +30,18 @@ cd sandhive-cli
 npm link
 sandhive --help
 ```
+
+## Update before use
+
+From your `sandhive-cli` checkout:
+
+```sh
+git pull --ff-only
+```
+
+The CLI displays the beta notice on every run (in JSON results, it appears as `notice`). Interactive terminal runs also check GitHub for newer commits, without downloading or applying updates. The check has short time limits and failures do not fail your command. JSON output, dry runs, and non-interactive runs skip this network check. Set `SANDHIVE_NO_UPDATE_CHECK=1` to disable automatic checks. If Git reports divergent branches or local changes, review them before updating.
+
+Installed agent skills are copies: after updating the repository, refresh those copies as needed so your agent uses the current workflow.
 
 ## Use with your agent
 
