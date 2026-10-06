@@ -424,3 +424,53 @@ test('human output includes the beta notice on stderr', async () => {
   assert.equal(out.trim(), '0.1.0');
   assert.match(err, /beta and active development/);
 });
+
+test('news manifest flags, UTF-8 file, and JSON send the same brief on the news route', async () => {
+  await withProject(async cwd => {
+    const manifest = 'Sandhive CLI AGENTCI TOOL for twitter harness\nVerified update: supports human style samples.';
+    await writeFile(join(cwd, 'manifest.md'), `\uFEFF${manifest}`, 'utf8');
+    await writeFile(join(cwd, 'style.json'), JSON.stringify(samples));
+    const requests = [
+      { args: ['--manifest', manifest, '--account', 'builder', '--style-file', 'style.json'], content: input },
+      { args: ['--manifest-file', 'manifest.md', '--account', 'builder', '--style-file', 'style.json'], content: input },
+      { args: ['--input', '-'], content: { user: { account: 'builder' }, style_samples: samples, manifest } },
+    ];
+    let expected;
+    for (const request of requests) {
+      const args = ['draft', 'post', ...request.args, '--json'];
+      const preview = await run([...args, '--dry-run'], request.content, undefined, cwd);
+      assert.equal(preview.exitCode, 0);
+      assert.equal(preview.result.endpoint, 'https://api.sandhive.io/cli/generate-news-twitter-post');
+      assert.equal(preview.result.payload.manifest, manifest);
+      assert.equal(preview.result.payload.fast, 1);
+      if (expected) assert.deepEqual(preview.result.payload, expected);
+      expected = preview.result.payload;
+      const live = await run(args, request.content, async (url, options) => {
+        assert.equal(url, preview.result.endpoint);
+        assert.deepEqual(JSON.parse(options.body), expected);
+        return new Response('{"post":"A news post","manifest_draft_index":1}');
+      }, cwd);
+      assert.equal(live.result.draft.text, 'A news post');
+      assert.equal(live.result.api.manifest_draft_index, 1);
+    }
+  });
+});
+
+test('invalid and conflicting manifests fail before sending a request', async () => {
+  const base = { user: input.user, style_samples: samples };
+  for (const manifest of ['', '   ', null, 42, {}]) {
+    const result = await run(['draft', 'post', '--input', '-', '--json'], { ...base, manifest });
+    assert.equal(result.exitCode, 2);
+  }
+  for (const [args, content] of [
+    [['draft', 'post', '--input', '-'], { ...base, post: 'Rewrite material', manifest: 'Brief' }],
+    [['draft', 'post', '--manifest', 'Brief', '--manifest-file', 'manifest.md', '--account', 'builder'], input],
+    [['draft', 'post', '--manifest-file', '-', '--account', 'builder'], input],
+    [['draft', 'post', '--input', '-', '--manifest', 'Brief'], base],
+    [['draft', 'reply', '--input', '-'], { ...input, manifest: 'Brief' }],
+  ]) {
+    const result = await run([...args, '--json'], content);
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.result.error.code, 'INVALID_INPUT');
+  }
+});

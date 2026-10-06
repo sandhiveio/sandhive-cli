@@ -16,7 +16,7 @@ These are placeholders, not usable samples. Never mark generated, rewritten, or 
 sandhive init --product "..." --audience "..." --account your_handle --voice "..." --fact "..."
 ```
 
-Creates `.sandhive/context.json`, never overwriting a profile. Add confirmed `style_samples` before drafting. Only an explicit `--context` loads it. Product/audience/facts and voice preferences supplement reply requests; source metadata is not sent. Post rewriting gets its factual material from the supplied text. News generation uses a server manifest, not local context facts.
+Creates `.sandhive/context.json`, never overwriting a profile. Add confirmed `style_samples` before drafting. Only an explicit `--context` loads it. Product/audience/facts and voice preferences supplement reply requests; source metadata is not sent. Post rewriting gets its factual material from the supplied text. News generation uses an explicit manifest when supplied, otherwise the server manifest. Local context facts are not uploaded automatically.
 
 ## Replies
 
@@ -35,7 +35,7 @@ sandhive draft post --file update.txt --account your_handle --style-file style.j
 sandhive draft post --account your_handle --style-file style.json --language English --max-length 280 --json
 ```
 
-Text/file supplies material to `/cli/rewrite-twitter-post`; no text source uses `/cli/generate-news-twitter-post` and its server-side account manifest. JSON input accepts `user.account`, optional `post`, `max_length`, `language`, and `style_samples`. A JSON request without `post` selects manifest generation. `language` is only supported in manifest mode. Length must be an integer from 80 to 4000; omitted values use backend defaults (280 for news, 4000 for rewrite). Do not combine input with text/file or `--account` (use `user.account` in JSON).
+Text/file supplies material to `/cli/rewrite-twitter-post`; no text source uses `/cli/generate-news-twitter-post` with an optional request manifest or the server-side account manifest. JSON input accepts `user.account`, optional `post`, `max_length`, `language`, `manifest`, and `style_samples`. A JSON request without `post` selects manifest generation. `language` is only supported in manifest mode. Length must be an integer from 80 to 4000; omitted values use backend defaults (280 for news, 4000 for rewrite). Do not combine input with text/file or `--account` (use `user.account` in JSON).
 
 ## Output and errors
 
@@ -58,3 +58,9 @@ Search returns opportunities/tweets with source evidence; empty results are vali
 All five API requests send numeric `"fast": 1` by default. This requests faster generation with slightly lower quality. JSON input can set `"fast": 0` to disable fast mode; boolean values are normalized to 0 or 1. The reply `--fast` flag explicitly enables the default mode.
 
 The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Requests are not retried automatically. A server or proxy may enforce its own shorter timeout.
+
+## News manifest input
+
+Use `sandhive draft post --manifest "Sandhive CLI AGENTCI TOOL for twitter harness" --account your_handle --style-file style.json --json`, or `--manifest-file manifest.md` for UTF-8 text (BOM supported; file path required). JSON requests may contain `manifest`. Use only one source; manifest flags cannot be combined with --input. Manifest must be non-empty text and cannot be combined with rewrite text/post. Use `--dry-run` to see the exact manifest sent.
+
+Request manifest overrides the server file for this generation only. Omit it to use the existing server manifest. The backend splits drafts on standalone `---` lines and randomly chooses one; use one brief when a specific angle is intended. Manifest supplies factual content and the intended message, never writing style. Human style samples are still mandatory.

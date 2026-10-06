@@ -121,7 +121,7 @@ export async function postJson(endpoint, payload, { fetchImpl = globalThis.fetch
 
 export function buildPostRequest(input, context) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) invalid('Post input must be an object.');
-  const allowed = new Set(['user', 'post', 'max_length', 'language', 'style_samples', 'fast']);
+  const allowed = new Set(['user', 'post', 'max_length', 'language', 'style_samples', 'fast', 'manifest']);
   for (const key of Object.keys(input)) if (!allowed.has(key)) invalid(`Unsupported post field: ${key}.`);
   if (typeof input.user?.account !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(input.user.account)) invalid('Provide user.account.');
   if (context !== undefined) validateContext(context);
@@ -131,6 +131,11 @@ export function buildPostRequest(input, context) {
   if (rewrite) {
     if (typeof input.post !== 'string' || !input.post.trim()) invalid('Post text must not be empty.');
     payload.post = input.post;
+  }
+  if (input.manifest !== undefined) {
+    if (rewrite) invalid('manifest is supported only for news-post generation; do not combine it with post text.');
+    if (typeof input.manifest !== 'string' || !input.manifest.trim()) invalid('manifest must be non-empty text.');
+    payload.manifest = input.manifest;
   }
   if (input.max_length !== undefined) {
     if (!Number.isInteger(input.max_length) || input.max_length < 80 || input.max_length > 4000) invalid('max_length must be an integer from 80 to 4000.');

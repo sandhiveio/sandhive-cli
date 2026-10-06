@@ -16,6 +16,7 @@ Usage:
   sandhive draft reply --file <file|-> [--account <handle>] [--context <file>] [--dry-run] [--json]
   sandhive draft reply --input <file|-> [--context <file>] [--fast] [--dry-run] [--json]
   sandhive skill install --agent <codex|claude> --target <project-directory> [--json]
+  sandhive draft post --manifest <brief> --account <handle> --style-file <file> [--dry-run] [--json]
   sandhive draft post [--text <draft> | --file <file|-> | --input <file|->] --context <file> [--json]
   sandhive find --query <search> --icp <sandhive|arc> [--query <search>] [--max-items <1-50>] [--query-type <Latest|Top>] [--min-icp-score <number>] [--dry-run] [--json]
   sandhive style --account <handle> [--refresh] [--max-items <1-200>] [--dry-run] [--json]
@@ -35,7 +36,9 @@ Options:
   --context <file>     Context JSON to use; init writes here (default: .sandhive/context.json)
   --style-file <file>  JSON array of at least three sourced, human-authored messages
   --max-length <n>     Post length limit (80 to 4000)
-  --language <text>    Language for server-manifest posts
+  --language <text>    Language for news posts
+  --manifest <text>    News-post brief sent instead of the server manifest
+  --manifest-file <file> Read a UTF-8 news-post brief (file path only)
   --fast              Use fast mode (already enabled by default; slightly lower quality)
   --dry-run           Preview the request without sending it
   --json              Emit one JSON result; no interactive prompts
@@ -89,7 +92,7 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
   try {
     const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, strict: true, options: {
       input: { type: 'string' }, context: { type: 'string' }, agent: { type: 'string' }, target: { type: 'string' },
-      'style-file': { type: 'string' }, 'max-length': { type: 'string' }, language: { type: 'string' },
+      'style-file': { type: 'string' }, 'max-length': { type: 'string' }, language: { type: 'string' }, manifest: { type: 'string' }, 'manifest-file': { type: 'string' },
       text: { type: 'string' }, file: { type: 'string' }, account: { type: 'string' },
       product: { type: 'string' }, audience: { type: 'string' }, voice: { type: 'string' },
       fact: { type: 'string', multiple: true }, example: { type: 'string', multiple: true },
@@ -105,7 +108,7 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       return 0;
     }
     const command = positionals.join(' ');
-    const allowed = command === 'draft post' ? ['input', 'text', 'file', 'account', 'context', 'style-file', 'max-length', 'language', 'dry-run', 'json']
+    const allowed = command === 'draft post' ? ['input', 'text', 'file', 'account', 'context', 'style-file', 'max-length', 'language', 'manifest', 'manifest-file', 'dry-run', 'json']
       : command === 'draft reply' ? ['input', 'text', 'file', 'account', 'context', 'style-file', 'fast', 'dry-run', 'json']
       : command === 'init' ? ['product', 'audience', 'voice', 'fact', 'example', 'account', 'context', 'json']
       : command === 'skill install' ? ['agent', 'target', 'json'] : ['json'];
@@ -175,6 +178,13 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
         if (input.style_samples !== undefined) throw new CliError('INVALID_INPUT', 'Use either style_samples or --style-file.', { exitCode: 2 });
         input.style_samples = await loadJson(localPath(values['style-file']), stdin);
         humanStyle(input.style_samples);
+      }
+      if (post && (values.manifest !== undefined || values['manifest-file'] !== undefined)) {
+        if ((values.manifest !== undefined && values['manifest-file'] !== undefined) || input.manifest !== undefined || values.input !== undefined) {
+          throw new CliError('INVALID_INPUT', 'Use exactly one manifest source: --manifest, --manifest-file, or manifest inside --input JSON.', { exitCode: 2 });
+        }
+        if (values['manifest-file'] === '-') throw new CliError('INVALID_INPUT', 'Use a file path for --manifest-file.', { exitCode: 2 });
+        input.manifest = values.manifest ?? await loadText(localPath(values['manifest-file']), stdin);
       }
       if (values['max-length'] !== undefined) input.max_length = Number(values['max-length']);
       if (values.language !== undefined) input.language = values.language;

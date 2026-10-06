@@ -5,12 +5,12 @@ All routes use POST JSON on `https://api.sandhive.io`:
 | CLI mode | Route | Existing backend fields | Response field |
 | --- | --- | --- | --- |
 | `draft reply` | `/cli/generate-tweet` | `tweet`, `user.account`, `externalRelies`, optional `fast` | `reply` |
-| `draft post` without supplied text | `/cli/generate-news-twitter-post` | `user.account`, `externalRelies`, optional `max_length`, `language` | `post` |
+| `draft post` without supplied text | `/cli/generate-news-twitter-post` | `user.account`, `externalRelies`, optional `max_length`, `language`, `manifest` | `post` |
 | `draft post` with supplied text | `/cli/rewrite-twitter-post` | `post`, `user.account`, `externalRelies`, optional `max_length` | `post` |
 
 The Python application exposes the corresponding routes without `/cli`; deployment must map the public prefix for all three. The reply URL was previously confirmed reachable with an empty request. New public post routes and actual paid generation have not been verified live. Offline tests verify URL selection, payloads, and response handling against the inspected Python contract.
 
-The news generator reads the account's server-side manifest. It accepts no local topic/update/context field. The rewrite generator uses supplied `post` text. No invented server fields are sent.
+The news generator accepts optional `manifest` as non-empty text. It uses that text instead of reading the account's server-side manifest, for this request only. Omitted manifest falls back to the server file. The backend also falls back for empty/non-string manifest, but the CLI rejects those values to avoid unintentionally using a different brief. Local context is not automatically converted to manifest. The backend splits multiple drafts on lines containing `---` and randomly selects one; send a single brief for a specific angle. The rewrite generator uses supplied `post` text. No invented server fields are sent.
 
 `style_samples` is a local CLI field: at least three original messages, each with non-empty text/source and `authorship: human`. Only sample text is sent in `externalRelies`. Reply context supplements these samples with explicitly labeled factual context/preferences. No sample can be replaced with an AI-generated voice description. The CLI cannot independently prove authorship; callers must establish it from original sources or the user's explicit assertion.
 
@@ -25,3 +25,18 @@ POST /cli/search-score-tweets uses queries, icp (sandhive/arc), optional max_ite
 All five API requests send numeric `"fast": 1` by default. This requests faster generation with slightly lower quality. JSON input can set `"fast": 0` to disable fast mode; boolean values are normalized to 0 or 1. The reply `--fast` flag explicitly enables the default mode.
 
 The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Requests are not retried automatically. A server or proxy may enforce its own shorter timeout.
+
+## Request manifest
+
+```json
+{
+  "user": { "account": "your_handle" },
+  "manifest": "Sandhive CLI AGENTCI TOOL for twitter harness",
+  "externalRelies": ["First original human message", "Second original human message", "Third original human message"],
+  "language": "English",
+  "max_length": 280,
+  "fast": 1
+}
+```
+
+This wire-payload example uses placeholders for human samples. In CLI JSON input, supply sourced `style_samples` instead of `externalRelies`; the CLI converts them. Manifest is content/brief, never a style sample. `manifest` is supported only by the news generator, not the rewrite or reply endpoints. No server manifest file is changed.

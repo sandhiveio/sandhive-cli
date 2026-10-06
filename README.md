@@ -115,13 +115,13 @@ Rewrite supplied material into a post using your human-written style:
 sandhive draft post --file update.txt --context .sandhive/context.json --style-file .sandhive/style.json --max-length 280 --json
 ```
 
-Use verified updates in `update.txt`. Without `--text`, `--file`, or `--input`, the CLI asks the existing news-post generator to use the account's **server-side manifest**:
+Use verified updates in `update.txt`. For news-post generation, supply a brief with `--manifest` or `--manifest-file`:
 
 ```sh
-sandhive draft post --account your_handle --style-file .sandhive/style.json --language English --max-length 280 --json
+sandhive draft post --manifest "Sandhive CLI AGENTCI TOOL for twitter harness" --account your_handle --style-file .sandhive/style.json --language English --max-length 280 --json
 ```
 
-Local project facts are not uploaded to the manifest generator. It requires the server's account manifest to be configured. `--language` applies only to that mode. Add `--dry-run` to either command to inspect the request. All drafts require manual review.
+For a longer brief, use `--manifest-file manifest.md`. The supplied text is sent as `manifest` and overrides the server manifest for this request; it does not save or update a server file. Omit the manifest and all post text sources to use the account's existing server-side manifest. JSON input can include `manifest` instead. Do not combine a manifest with rewrite text (`--text`, `--file`, or JSON `post`). Local project facts are not uploaded automatically: include the relevant verified facts in your brief. `--language` applies only to news generation. Add `--dry-run` to inspect the request. All drafts require manual review.
 
 ## For agents and scripts
 
