@@ -2,23 +2,35 @@
 
 > **Beta - active development. Update this repository before using the CLI.** Commands and API contracts may change.
 
-**Draft X posts and useful replies in your project's voice.**
+**Give your agent your writing voice. Turn project updates and X conversations into drafts you can review.**
 
-Bring a conversation and a few verified product facts. SandHive helps you prepare a reply to review and publish yourself — from your terminal or through an agent such as Codex or Claude Code.
+SandHive combines a CLI with a skill for Codex and Claude Code. Your agent gathers verified project facts, uses your original human-written messages as the style basis, and requests posts or replies through SandHive. You see where each draft came from and decide what to publish.
 
 [Website](https://www.sandhive.io) · [CLI reference](skills/sandhive/references/cli.md) · [Roadmap](docs/roadmap.md) · [Issues](https://github.com/sandhiveio/sandhive-cli/issues)
 
 > Early preview: post and reply drafting, local project context, and agent skill installation are available. Full conversation retrieval, persistent review, and key activation are planned. There is no automatic publishing or npm release yet.
 
-## What a useful reply looks like
+## Why use SandHive with your agent?
 
-**Conversation:** “We shipped our first release, but finding useful conversations with potential users has been harder than building it. What has worked for other founders?”
+Your agent already knows what you are building. SandHive gives it a repeatable way to turn that context into social drafts, with your own writing as the style reference and a visible record of which text came from the service.
 
-**Context:** Your product helps founders organize user feedback. Your voice is concise and practical.
+| What you bring | What it helps you do |
+| --- | --- |
+| Original messages you wrote yourself | Give the generator concrete examples of your wording, rhythm, and tone. |
+| Verified product facts and completed work | Prepare a post about a specific update or a reply grounded in what you actually know. |
+| A conversation worth joining | Draft an answer to the supplied conversation, then check its usefulness before posting. |
+| A CLI and a portable agent skill | Use the same generation workflow from your terminal, Codex, or Claude Code. |
+| Visible draft labels | See the actual SandHive output, human edits, and any explicitly requested local comparison separately. |
 
-**Illustrative draft:** “Pick one problem your product solves and look for people describing it in their own words. Answer the question they actually asked, then use their follow-up questions to decide what to explain next.”
+**Your messages are the style source. Generated drafts never become your style corpus.** The skill requires a live CLI generation for each new post, reply, or AI revision. If generation fails, the agent reports it instead of silently substituting its own text. These are skill instructions; they do not technically prevent an agent from acting outside the workflow.
 
-The example shows the intended workflow, not a recorded API result. Replies should add something useful; a product link is optional.
+## Three ways to use it
+
+- **Explain what you shipped.** Give the agent a verified update and ask for a post in your voice.
+- **Join a useful conversation.** Supply a post or search for candidates, then ask for a relevant reply.
+- **Inspect the effect.** Ask for a local baseline beside the actual SandHive output, using the same facts and brief.
+
+Start with [agent setup](#use-with-your-agent) or [the terminal walkthrough](#use-from-your-terminal). Every draft stays under human review; publishing is manual.
 
 ## Install
 
@@ -53,9 +65,17 @@ sandhive skill install --agent codex --target .
 sandhive skill install --agent claude --target .
 ```
 
-Then ask:
+### Reply to a conversation
 
-> Use SandHive to prepare this project's audience and verified facts from the available documentation. Derive my writing style only from original messages I wrote myself; never use AI-generated drafts. If authorship is uncertain, ask me for samples. Preview the request, then draft a reply to this conversation for my review. My X handle is @your_handle. Conversation: [paste the post and relevant surrounding text].
+> Use SandHive to draft a reply to this conversation: [paste the post and relevant context]. Read this project's docs for verified facts. Use only confirmed messages I wrote myself as style samples; ask me if you need them. My X handle is @your_handle. Preview the request, then generate through the CLI and show the labeled draft for review.
+
+### Turn completed work into a post
+
+> Use SandHive to prepare an X post about the export feature we just shipped. Verify the change from this repo, prepare a short manifest, and generate through the CLI using my confirmed human-written samples. Do not invent results or customer reactions. Show the labeled draft for my review.
+
+### Compare the effect
+
+> For the same update, show a local baseline and the actual SandHive CLI result side by side. Label both clearly. Keep the facts the same and explain the differences you can see in wording, rhythm, and tone. Do not treat either generated version as a human writing sample.
 
 The agent prepares a compact local profile, calls the CLI, and helps you review the draft. It uses sources available in its session; access to other chats is not assumed. The same [skill](skills/sandhive/SKILL.md) is used for both agents.
 
@@ -64,6 +84,15 @@ The agent prepares a compact local profile, calls the CLI, and helps you review 
 When using the skill, every new post, reply, and AI revision goes through the CLI. Each displayed draft is visibly labeled as **SandHive CLI - styled from human-written samples**, **SandHive CLI + human edits**, or **Without SandHive - generated locally by the agent**. Failed calls are never silently replaced with a local draft.
 
 Ask for a comparison to see a clearly labeled local baseline alongside the actual SandHive output, using the same brief and facts. Labels stay outside the copyable post text. Generated comparisons never become human style samples.
+
+**Comparison layout (placeholders, not generated examples):**
+
+| Without SandHive - local agent baseline | SandHive CLI - styled from human-written samples |
+| --- | --- |
+| `[The agent's explicitly requested local comparison text]` | `[Exact draft.text returned by a successful CLI generation]` |
+
+A comparison makes the effect inspectable; it does not establish that one version is better. Review the actual wording and factual claims. A published or approved AI draft still cannot be used as a human style sample.
+
 
 ## Use from your terminal
 
@@ -75,7 +104,7 @@ Run this from your project's directory, replacing the example values:
 sandhive init --product "A tool for organizing user feedback" --audience "Early-stage founders" --account your_handle --voice "Concise, practical, no hype" --fact "Feedback can be grouped by topic"
 ```
 
-This creates `.sandhive/context.json` locally without an API request. Edit it as your product changes. Add only verified facts; `--fact` and `--example` can be repeated. Existing profiles are never overwritten. The default `.sandhive` directory gets its own Git ignore file.
+This creates `.sandhive/context.json` locally without an API request. Edit it as your product changes. Add only verified facts; repeat `--fact` as needed. Style samples are supplied separately in the next step. Existing profiles are never overwritten. The default `.sandhive` directory gets its own Git ignore file.
 
 ### 2. Add your human-written style samples
 
@@ -111,7 +140,7 @@ Check the facts, tone, and contribution to the conversation. Edit the text and p
 
 For a longer conversation, use `--file conversation.txt` instead of `--text`. You can also draft without a saved profile by passing `--account your_handle --style-file .sandhive/style.json`.
 
-Only the supplied conversation, account identifier, and writing guidance are sent to the hosted service. Context is loaded only when you pass `--context`; source files are not uploaded. Keep secrets and confidential material out of requests.
+Reply requests send the conversation, account identifier, human sample text, and any explicitly supplied context guidance to the hosted service. Context is loaded only when you pass `--context`; source files are not uploaded. Keep secrets and confidential material out of requests.
 
 ## Draft a post
 
@@ -124,7 +153,7 @@ sandhive draft post --file update.txt --context .sandhive/context.json --style-f
 Use verified updates in `update.txt`. For news-post generation, supply a brief with `--manifest` or `--manifest-file`:
 
 ```sh
-sandhive draft post --manifest "Sandhive CLI AGENTCI TOOL for twitter harness" --account your_handle --style-file .sandhive/style.json --language English --max-length 280 --json
+sandhive draft post --manifest "We shipped manifest input for SandHive CLI. Explain that agents can supply a brief and request an X draft using human-written style samples. Do not invent adoption or results." --account your_handle --style-file .sandhive/style.json --language English --max-length 280 --json
 ```
 
 For a longer brief, use `--manifest-file manifest.md`. The supplied text is sent as `manifest` and overrides the server manifest for this request; it does not save or update a server file. Omit the manifest and all post text sources to use the account's existing server-side manifest. JSON input can include `manifest` instead. Do not combine a manifest with rewrite text (`--text`, `--file`, or JSON `post`). Local project facts are not uploaded automatically: include the relevant verified facts in your brief. `--language` applies only to news generation. Add `--dry-run` to inspect the request. All drafts require manual review.
@@ -138,23 +167,6 @@ sandhive draft reply --input examples/reply.json --style-file .sandhive/style.js
 ```
 
 Results distinguish a draft, no draft, a preview, and an error. Commands do not prompt, and requests are not retried automatically. See the [CLI reference](skills/sandhive/references/cli.md) for fields and exit codes, and [API notes](docs/api.md) for service details and verification status.
-
-## Troubleshooting
-
-| Result | Next step |
-| --- | --- |
-| `INVALID_INPUT` | Check the named field. Use exactly one of `--text`, `--file`, or `--input`; supply an account directly or in your context. |
-| `ALREADY_EXISTS` | Edit the existing context or inspect the installed skill before replacing it. |
-| `no_draft` | Review the supplied conversation or choose another. The API may not provide the exact reason. |
-| `RATE_LIMITED` | Respect `retry_after` in JSON output before trying again. |
-| `TIMEOUT` / `NETWORK_ERROR` | The request may have reached the server. Avoid repeatedly submitting the same request; see [API notes](docs/api.md). |
-| `NOT_IMPLEMENTED` | The command is planned. Use the current reply workflow; see the [roadmap](docs/roadmap.md). |
-
-## Development and release terms
-
-Run `npm test` for the offline test suite. Keep project files and commit messages in English.
-
-Distribution and service terms are being finalized. This repository does not currently grant an open-source license; the npm package remains private until release terms are ready.
 
 ## Find conversations and retrieve candidate samples
 
@@ -170,3 +182,20 @@ Search supports sandhive/arc predefined scoring. Evaluate relevance against your
 All five API requests send numeric `"fast": 1` by default. This requests faster generation with slightly lower quality. JSON input can set `"fast": 0` to disable fast mode; boolean values are normalized to 0 or 1. The reply `--fast` flag explicitly enables the default mode.
 
 The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Requests are not retried automatically. A server or proxy may enforce its own shorter timeout.
+
+## Troubleshooting
+
+| Result | Next step |
+| --- | --- |
+| `INVALID_INPUT` | Check the named field and confirmed human samples. Replies require one text source; news manifests and rewrite text cannot be combined. Supply an account directly or in your context. |
+| `ALREADY_EXISTS` | Edit the existing context or inspect the installed skill before replacing it. |
+| `no_draft` | Review the supplied conversation or choose another. The API may not provide the exact reason. |
+| `RATE_LIMITED` | Respect `retry_after` in JSON output before trying again. |
+| `TIMEOUT` / `NETWORK_ERROR` | The request may have reached the server. Avoid repeatedly submitting the same request; see [API notes](docs/api.md). |
+| `NOT_IMPLEMENTED` | The command is planned. Use the current reply workflow; see the [roadmap](docs/roadmap.md). |
+
+## Development and release terms
+
+Run `npm test` for the offline test suite. Keep project files and commit messages in English.
+
+Distribution and service terms are being finalized. This repository does not currently grant an open-source license; the npm package remains private until release terms are ready.
