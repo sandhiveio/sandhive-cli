@@ -23,6 +23,18 @@ Gather candidates before requesting review. If human authorship is already estab
 
 For example, after saving @RealTjDunham, continue with `sandhive style --account RealTjDunham --json`. A useful update is: "I retrieved these candidate messages from your X account. Please check that they are your original writing; I will reuse the confirmed examples for future drafts." Do not say "Please send three messages" before attempting retrieval and existing sources. Never claim retrieval succeeded without an actual result.
 
+## Proactive execution
+
+Treat the user's requested outcome as work to complete, not an invitation to list capabilities. After installation or setup is requested, inspect available project context, retrieve candidate style through the CLI when the account is known, and prepare the next useful input without waiting for another prompt. Installation alone does not authorize paid generation, scheduling, or publishing; propose a concrete first outcome when no generation task was requested.
+
+For an authorized post/reply/discovery task, choose the next reasonable action from the stated goal and available evidence and execute it. Do not repeatedly ask "What next?", "Should I continue?", or "Would you like me to use the CLI?" Do not stop at saving a profile when the requested result is still outstanding. Continue independent preparation while a necessary question is pending.
+
+For core validation, derive source-backed problem queries, run a bounded relevant search within scope, rank up to five candidates, and prepare requested replies with source links. For the social layer, inspect verified recent work, prepare a factual manifest, and generate the requested post through the CLI. If the evidence is insufficient, collect and present candidate context before asking a short question with options. No invented updates or automatic publishing.
+
+At a genuine decision point, recommend one next action with a reason and offer at most two alternatives. Ask only for missing essentials, uncertain human authorship, an ambiguous objective, or authorization beyond the existing request. Keep search and generation bounded; do not interpret proactivity as unlimited API calls. A recurring routine is a suggestion until explicitly requested.
+
+Deliver the requested concrete result and then give one useful next-step recommendation. Explain a blocker with what was tried and the smallest choice needed to resolve it; never leave the user with an empty questionnaire or just a list of features.
+
 ## Project context and simple choices
 
 Acquire project context before asking the user to describe it manually. Try relevant supported CLI methods first; the current CLI has no project-context extraction endpoint, so do not invent one or send unrelated discovery requests merely to satisfy CLI-first. Read existing context/profile, repository README and product docs, available website material, verified recent changes, and accessible human dialogue. Prepare a short candidate summary: product, audience, verified facts, account, and goal. Show that summary for review instead of presenting an empty questionnaire. Keep unsupported assumptions visible and do not treat inferred facts as verified.
