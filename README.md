@@ -122,7 +122,7 @@ After installation, ask your agent:
 
 > Use SandHive to guide me through setup and my first draft. Reuse this project's context, help me confirm my original writing samples, and suggest one next step at a time.
 
-The skill walks you from project context and human samples to a first reviewed draft, then relevant conversations. It reuses completed steps. Installing the skill copies files; use this prompt to start the guided workflow in your agent.
+The skill walks you from project context and human samples to a first reviewed draft, then relevant conversations. It reads available project material first and proposes a compact context summary for review. Missing choices use short options rather than an open-ended questionnaire: **validate the core idea**, **maintain the social layer**, or **both**. It reuses completed steps. Installing the skill copies files; use this prompt to start the guided workflow in your agent.
 
 ### Build a routine when you are ready
 

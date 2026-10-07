@@ -23,13 +23,31 @@ Gather candidates before requesting review. If human authorship is already estab
 
 For example, after saving @RealTjDunham, continue with `sandhive style --account RealTjDunham --json`. A useful update is: "I retrieved these candidate messages from your X account. Please check that they are your original writing; I will reuse the confirmed examples for future drafts." Do not say "Please send three messages" before attempting retrieval and existing sources. Never claim retrieval succeeded without an actual result.
 
+## Project context and simple choices
+
+Acquire project context before asking the user to describe it manually. Try relevant supported CLI methods first; the current CLI has no project-context extraction endpoint, so do not invent one or send unrelated discovery requests merely to satisfy CLI-first. Read existing context/profile, repository README and product docs, available website material, verified recent changes, and accessible human dialogue. Prepare a short candidate summary: product, audience, verified facts, account, and goal. Show that summary for review instead of presenting an empty questionnaire. Keep unsupported assumptions visible and do not treat inferred facts as verified.
+
+Ask only for information still needed, using one simple choice at a time with two or three concrete options. Use the host's choice/question UI when available; otherwise offer numbered options in the user's language. Allow corrections or a custom answer, but do not make an open-ended answer the required starting point. Reuse earlier answers and continue already authorized work without repeated approvals.
+
+Resolve the goal from the user's request first. If it is unclear, offer:
+
+- **Validate the core idea**: find people describing the problem, join relevant conversations, and learn whether the product's core value resonates. Engagement is a signal, not proof of product validation.
+- **Maintain the social layer**: turn verified updates into posts and prepare useful replies to keep the project present on X.
+- **Both**: start with problem conversations, then share relevant verified updates.
+
+After extracting available context, ask a compact review question such as: "I found: [product], for [audience], with [verified facts]. Use this context?" Options: "Use it", "Adjust the audience", "Adjust the product summary". If a correction is needed, derive specific alternatives from the evidence before requesting new prose.
+
+For a missing audience, suggest concrete source-backed segments rather than asking "Who is your ICP?" For the next action, offer "Find problem conversations", "Draft a post from recent work", or "Reply to a supplied conversation". For cadence, offer a small proposed routine and an on-demand option before asking for exact times. Account identifiers, timezone, and other exact values may require short free-text input when they cannot be recovered or offered as known choices; do not invent them.
+
+Do not stop after saving a profile. Offer and carry out the next scoped action. Manual context entry is the last resort when existing evidence and concrete choices cannot resolve the gap.
+
 ## Guided first run and next steps
 
 When the user installs or starts this skill, offer a guided first run instead of ending with installation confirmation. Installing files does not automatically start an agent conversation: use the installation prompt when the host needs an explicit invocation. Resume from existing context and completed steps; do not repeat setup or ask for information already available.
 
-Lead with one recommended next step, a short explanation of its value, and at most one question when essential information is missing. Continue work already authorized; do not turn every step into another permission request. Match the user's language and experience. Offer the other path only when it helps them choose.
+Lead with one recommended next step, a short explanation of its value, and at most one question when essential information is missing. Continue work already authorized; do not turn every step into another permission request. Match the user's language and experience. When a choice is needed, provide two or three concrete options instead of an open-ended question.
 
-1. **Prepare project context.** Read available project docs and summarize product, audience, verified facts, and the intended X account. Offer to save a compact local profile. Ask only for missing essentials.
+1. **Prepare project context.** Read available project docs and summarize product, audience, verified facts, and the intended X account. Offer to save a compact local profile. Present a candidate summary and ask only for missing essentials using concrete choices.
 2. **Establish human style.** Use the style acquisition order above: CLI retrieval first, accessible human dialogue/files second, manual examples last. Reuse saved confirmed samples. Present retrieved candidates for review only when authorship remains uncertain. Explain briefly why generated drafts cannot be samples.
 3. **Produce the first result.** Recommend one post from a verified update or one reply to a supplied conversation. Preview if requested, generate through the CLI, and present the labeled draft for review. A comparison is optional and must be requested or accepted.
 4. **Find the next useful conversation.** Suggest a bounded search from the audience's actual problems. Offer up to five relevant individual posts with evidence, source links, and a reason to join each. Retrieve missing conversation context through available authorized tools; the CLI does not retrieve complete threads. Draft replies within the requested scope.
