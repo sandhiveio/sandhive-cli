@@ -32,6 +32,43 @@ Your agent already knows what you are building. SandHive gives it a repeatable w
 
 Start with [agent setup](#use-with-your-agent) or [the terminal walkthrough](#use-from-your-terminal). Every draft stays under human review; publishing is manual.
 
+## X activity and conversations
+
+The SandHive website includes founder-reported analytics and screenshots of interactions on X. Here is the source material behind those examples.
+
+### 224.9K impressions in a seven-day snapshot
+
+| Impressions | Engagements | Profile visits |
+| --- | --- | --- |
+| **224.9K** | **2.8K** | **1K** |
+
+<a href="docs/proofs/reach-cropped.png"><img src="docs/proofs/reach-cropped.png" alt="Seven-day X analytics showing 224.9K impressions, 2.8K engagements, and 1K profile visits" width="480"></a>
+
+Founder-reported organic activity, attributed to **@fromcaz** on the website. The screenshot shows Nov 24-30; the year is not displayed. This is historical account activity, not a controlled measurement of the CLI's effect or a promise of future results.
+
+### Replies from Trust Wallet, Binance, and Polymarket
+
+The screenshots show these accounts replying to **@IronRedSandHive**; the Trust Wallet screenshot also includes likes. These are conversation examples, not customer testimonials, partnerships, or endorsements of SandHive CLI.
+
+<details>
+<summary><strong>View the original interaction screenshots</strong></summary>
+
+**Trust Wallet**
+
+[![Trust Wallet likes and replies to @IronRedSandHive](docs/proofs/trust-wallet.png)](docs/proofs/trust-wallet.png)
+
+**Binance**
+
+[![Binance replying to @IronRedSandHive](docs/proofs/binance.png)](docs/proofs/binance.png)
+
+**Polymarket**
+
+[![Polymarket replying to @IronRedSandHive](docs/proofs/polymarket.png)](docs/proofs/polymarket.png)
+
+</details>
+
+Source: existing SandHive frontend assets and website captions. The screenshots do not establish which messages were generated with the CLI. Open each image to inspect the evidence.
+
 ## Install
 
 Requires **Node.js 22 or later**. Install from source while the npm release is being prepared:
