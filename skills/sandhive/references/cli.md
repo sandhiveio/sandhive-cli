@@ -64,3 +64,7 @@ The client timeout is **20 minutes (1,200,000 ms)** per request, including readi
 Use `sandhive draft post --manifest "Sandhive CLI AGENTCI TOOL for twitter harness" --account your_handle --style-file style.json --json`, or `--manifest-file manifest.md` for UTF-8 text (BOM supported; file path required). JSON requests may contain `manifest`. Use only one source; manifest flags cannot be combined with --input. Manifest must be non-empty text and cannot be combined with rewrite text/post. Use `--dry-run` to see the exact manifest sent.
 
 Request manifest overrides the server file for this generation only. Omit it to use the existing server manifest. The backend splits drafts on standalone `---` lines and randomly chooses one; use one brief when a specific angle is intended. Manifest supplies factual content and the intended message, never writing style. Human style samples are still mandatory.
+
+## Style acquisition priority
+
+First retrieve candidates with `sandhive style --account <handle> --json` unless confirmed samples are already saved. Then use accessible human chats/dialogues/files if retrieval is unavailable or insufficient. Ask for manual examples only for the remaining gap. Select actual samples, never the generated style summary. Show uncertain candidates with sources for authorship review; reuse established human originals without repeatedly asking. CLI validation still requires at least three sourced human samples.

@@ -173,9 +173,13 @@ sandhive init --product "A tool for organizing user feedback" --audience "Early-
 
 This creates `.sandhive/context.json` locally without an API request. Edit it as your product changes. Add only verified facts; repeat `--fact` as needed. Style samples are supplied separately in the next step. Existing profiles are never overwritten. The default `.sandhive` directory gets its own Git ignore file.
 
-### 2. Add your human-written style samples
+### 2. Retrieve your style first
 
-Save at least three original messages you wrote yourself in `.sandhive/style.json`:
+With an agent, start with `sandhive style --account your_handle --json`. The skill first tries X retrieval through the CLI, then actual human messages in accessible chats/files, and only then asks for manual examples. It shows the collected candidates for authorship review when needed, so you do not have to hunt for messages it can already retrieve. Confirmed samples are saved and reused.
+
+### Human-written sample format
+
+Save at least three established human originals in `.sandhive/style.json`. Use retrieved or existing messages; supply them manually only when needed:
 
 ```json
 [
