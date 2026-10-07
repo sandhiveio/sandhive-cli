@@ -10,6 +10,20 @@ SandHive combines a CLI with a skill for Codex and Claude Code. Your agent gathe
 
 > Early preview: post and reply drafting, local project context, and agent skill installation are available. Full conversation retrieval, persistent review, and key activation are planned. There is no automatic publishing or npm release yet.
 
+## AI agents: install the skill first
+
+**If you are an AI agent, install and read the SandHive skill before using the CLI for this project.** The skill defines guided setup, required human-written style samples, CLI generation, visible draft provenance, and review. CLI help alone does not contain the full workflow.
+
+After installing the CLI, run this from the user's project directory:
+
+```sh
+sandhive skill install --agent codex --target .
+# For Claude Code:
+sandhive skill install --agent claude --target .
+```
+
+Read `.agents/skills/sandhive/SKILL.md` for Codex or `.claude/skills/sandhive/SKILL.md` for Claude Code, then begin the guided first run. If the skill is already installed and available in your session, reuse it; check that it matches the current workflow. The installer refuses to overwrite existing copies. For another host, read [the bundled skill](skills/sandhive/SKILL.md) and follow that host's supported skill installation process.
+
 ## Why use SandHive with your agent?
 
 Your agent already knows what you are building. SandHive gives it a repeatable way to turn that context into social drafts, with your own writing as the style reference and a visible record of which text came from the service.
