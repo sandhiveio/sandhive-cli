@@ -21,7 +21,7 @@ For every task, first use a relevant supported SandHive CLI method within the us
 
 Gather candidates before requesting review. If human authorship is already established by available evidence or a prior user confirmation, save/reuse them without another confirmation. If authorship is uncertain, show the selected texts and their sources together and ask whether they are the user's own original human writing; do not ask the user to locate replacements unless these candidates are rejected or insufficient. Retrieval or publication alone does not prove human authorship. Set `authorship: human` only once supported; do not weaken this requirement to avoid a question.
 
-For example, after saving @RealTjDunham, continue with `sandhive style --account RealTjDunham --json`. A useful update is: "I retrieved these candidate messages from your X account. Please check that they are your original writing; I will reuse the confirmed examples for future drafts." Do not say "Please send three messages" before attempting retrieval and existing sources. Never claim retrieval succeeded without an actual result.
+For example, after saving the intended account, continue with `sandhive style --account <handle> --json`. A useful update is: "I retrieved these candidate messages from your X account. Please check that they are your original writing; I will reuse the confirmed examples for future drafts." Do not say "Please send three messages" before attempting retrieval and existing sources. Never claim retrieval succeeded without an actual result.
 
 ## Proactive execution
 
