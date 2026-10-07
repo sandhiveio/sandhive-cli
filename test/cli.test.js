@@ -236,6 +236,8 @@ test('skill installation copies all references and refuses to overwrite', async 
     for (const agent of ['codex', 'claude']) {
       const result = await run(['skill', 'install', '--agent', agent, '--target', target, '--json']);
       assert.equal(result.exitCode, 0);
+      assert.equal(result.result.next_steps.length, 5);
+      assert.match(result.result.suggested_prompt, /one next step at a time/);
       const reference = await readFile(join(result.result.path, 'references', 'cli.md'), 'utf8');
       assert.ok(reference.includes('NOT_IMPLEMENTED'));
       const duplicate = await run(['skill', 'install', '--agent', agent, '--target', target, '--json']);

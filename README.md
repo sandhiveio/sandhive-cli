@@ -102,6 +102,22 @@ sandhive skill install --agent codex --target .
 sandhive skill install --agent claude --target .
 ```
 
+### Start with a guided first run
+
+After installation, ask your agent:
+
+> Use SandHive to guide me through setup and my first draft. Reuse this project's context, help me confirm my original writing samples, and suggest one next step at a time.
+
+The skill walks you from project context and human samples to a first reviewed draft, then relevant conversations. It reuses completed steps. Installing the skill copies files; use this prompt to start the guided workflow in your agent.
+
+### Build a routine when you are ready
+
+After a useful first result, the agent can suggest a recurring draft-and-review routine: for example, two posts a week from verified updates, plus a weekday search for up to five relevant posts and up to three reply drafts.
+
+> Help me set up a recurring SandHive routine. Propose a cadence and per-run limits, confirm my timezone, and use this host's scheduler if available. Keep every draft for my review and do not publish automatically.
+
+A schedule is created only when you request it and supply the necessary details. SandHive CLI has no built-in scheduler; scheduling depends on your agent host or your own scheduler. Each run still uses confirmed human samples and CLI generation. Search and generation may incur service usage. No meaningful update means no invented post.
+
 ### Reply to a conversation
 
 > Use SandHive to draft a reply to this conversation: [paste the post and relevant context]. Read this project's docs for verified facts. Use only confirmed messages I wrote myself as style samples; ask me if you need them. My X handle is @your_handle. Preview the request, then generate through the CLI and show the labeled draft for review.

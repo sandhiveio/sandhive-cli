@@ -206,7 +206,9 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       catch (error) { if (error.code !== 'ENOENT') throw error; }
       await mkdir(dirname(target), { recursive: true });
       await cp(source, target, { recursive: true, force: false, errorOnExist: true });
-      emit({ schema_version: 1, status: 'ok', message: `Installed the SandHive skill at ${target}.`, path: target }, json, stdout);
+      emit({ schema_version: 1, status: 'ok', message: `Installed the SandHive skill at ${target}. Next, ask your agent: "Use SandHive to guide me through setup and my first draft."`, path: target,
+        next_steps: ["Prepare project context", "Confirm original human-written style samples", "Generate and review a first draft", "Find relevant conversations", "Discuss a recurring draft-and-review routine"],
+        suggested_prompt: "Use SandHive to guide me through setup and my first draft. Reuse available project context and suggest one next step at a time." }, json, stdout);
       return 0;
     }
     if (['review', 'auth', 'usage'].includes(command)) {

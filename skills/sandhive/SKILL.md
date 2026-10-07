@@ -9,6 +9,28 @@ Help the user join relevant conversations with something useful to say. Use the 
 
 Requires Node.js 22 or later, the `sandhive` CLI on PATH, and network access for live post and reply generation.
 
+## Guided first run and next steps
+
+When the user installs or starts this skill, offer a guided first run instead of ending with installation confirmation. Installing files does not automatically start an agent conversation: use the installation prompt when the host needs an explicit invocation. Resume from existing context and completed steps; do not repeat setup or ask for information already available.
+
+Lead with one recommended next step, a short explanation of its value, and at most one question when essential information is missing. Continue work already authorized; do not turn every step into another permission request. Match the user's language and experience. Offer the other path only when it helps them choose.
+
+1. **Prepare project context.** Read available project docs and summarize product, audience, verified facts, and the intended X account. Offer to save a compact local profile. Ask only for missing essentials.
+2. **Establish human style.** Obtain at least three confirmed original human messages with sources. Existing validated samples can be reused. Candidate messages from `style` require authorship confirmation. Explain briefly why generated drafts cannot be samples.
+3. **Produce the first result.** Recommend one post from a verified update or one reply to a supplied conversation. Preview if requested, generate through the CLI, and present the labeled draft for review. A comparison is optional and must be requested or accepted.
+4. **Find the next useful conversation.** Suggest a bounded search from the audience's actual problems. Offer up to five relevant individual posts with evidence, source links, and a reason to join each. Retrieve missing conversation context through available authorized tools; the CLI does not retrieve complete threads. Draft replies within the requested scope.
+5. **Offer a recurring routine after a useful first result.** Explain what it would prepare and how the user would review it. Do not set up a schedule just because the skill is installed. If the user declines, continue on demand and avoid repeated nudges.
+
+After each completed result, suggest the next concrete action in one or two sentences. For example: "Your first post is ready for review. Next, we can find three conversations where this update would help someone." Do not append the whole setup checklist to every response.
+
+### Scheduling handoff
+
+Recommend a small starting routine the user can adjust: twice-weekly posts from verified new work, and a weekday search with up to five candidates and up to three useful reply drafts. These are suggested starting limits, not scheduled work or permission for new API calls. Confirm the desired cadence, timezone, account/project, and per-run scope before creating a schedule. Reuse values the user already supplied.
+
+The CLI has no scheduler. Use the host's supported scheduling/automation tools when available and requested; otherwise describe how to run the workflow using the user's scheduler without claiming it is configured. Do not invent CLI schedule commands. If a supported tool is unavailable, state that limitation and give a concrete routine the user can save.
+
+A recurring run must refresh relevant verified facts, reuse only confirmed human style samples, generate every post/reply through the CLI, and return labeled drafts and source links for manual review. Skip a post when no meaningful verified update exists; do not fabricate work. Deduplicate candidates using available history, disclose when persistent history is unavailable, and keep within the agreed search/generation limits. Report failures without blind retries or local draft substitution. Describe possible scraping/model usage; no server-enforced spending limit is implemented. No automatic publishing or outreach is included.
+
 ## Required generation and visible provenance
 
 Every new post, reply, alternative, and substantive AI rewrite produced while using this skill MUST be generated through a live `sandhive draft post` or `sandhive draft reply` CLI request. Preparing factual context, a manifest, or input material locally is allowed; those inputs are not final generated posts. Do not compose a final draft yourself and present it as a SandHive result. A dry run, search, style retrieval, earlier API result, or failed request does not establish generation of a new draft.
