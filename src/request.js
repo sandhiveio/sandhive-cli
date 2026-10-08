@@ -65,7 +65,7 @@ export function buildReplyRequest(input, context, { fast = false } = {}) {
     invalid('Use verified human style_samples instead of externalRelies, style_prompt, or style.');
   }
   const samples = humanStyle(input.style_samples !== undefined ? input.style_samples : context?.style_samples);
-  const payload = { t: "1", tweet: input.tweet, user: { account: input.user.account }, externalRelies: samples, fast: fastValue(input.fast) };
+  const payload = { t: 1, tweet: input.tweet, user: { account: input.user.account }, externalRelies: samples, fast: fastValue(input.fast) };
   if (context !== undefined) {
     validateContext(context);
     payload.externalRelies = [...samples,
@@ -153,7 +153,7 @@ export function buildPostRequest(input, context) {
 
 export async function generateReply(payload, { endpoint = GENERATE_REPLY_URL, field = 'reply', ...options } = {}) {
   const isReply = endpoint === GENERATE_REPLY_URL && field === 'reply';
-  const request = isReply ? { ...payload, t: '1' } : payload;
+  const request = isReply ? { ...payload, t: 1 } : payload;
   const limit = isReply ? MAX_REPLY_ATTEMPTS : 1;
   for (let attempt = 1; attempt <= limit; attempt++) {
     const response = await postJson(endpoint, request, options);

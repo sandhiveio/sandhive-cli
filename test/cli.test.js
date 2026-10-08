@@ -90,7 +90,7 @@ test('plain text, UTF-8 files, and stdin map to the same reply input', async () 
       const result = await run(['draft', 'reply', '--style-file', 'style.json', ...args, '--account', '@builder', '--dry-run', '--json'],
         conversation, undefined, cwd);
       assert.equal(result.exitCode, 0);
-      assert.deepEqual(result.result.payload, { t: '1', tweet: conversation, user: { account: 'builder' }, externalRelies: samples.map(s => s.text), fast: 1 });
+      assert.deepEqual(result.result.payload, { t: 1, tweet: conversation, user: { account: 'builder' }, externalRelies: samples.map(s => s.text), fast: 1 });
     }
   });
 });
@@ -151,7 +151,7 @@ test('reply request uses the exact endpoint and preserves API metadata', async (
     assert.equal(url, GENERATE_REPLY_URL);
     assert.equal(options.method, 'POST');
     assert.equal(options.redirect, 'error');
-    assert.deepEqual(JSON.parse(options.body), { fast: 1, ...input, t: '1' });
+    assert.deepEqual(JSON.parse(options.body), { fast: 1, ...input, t: 1 });
     return new Response(JSON.stringify({ reply: 'Start with one relevant conversation.', wait: 1, gate_score: 7 }));
   } });
   assert.equal(calls, 1);
@@ -502,7 +502,7 @@ test('custom ICP description supports description-only and combined requests', a
 test('reply generation retries empty text up to five total attempts and always sends t', async () => {
   let calls = 0;
   const result = await generateReply(input, { fetchImpl: async (url, options) => {
-    assert.equal(JSON.parse(options.body).t, '1');
+    assert.equal(JSON.parse(options.body).t, 1);
     const replies = [{}, { reply: null }, { reply: '' }, { reply: false }, { reply: 'Finally a reply' }];
     return new Response(JSON.stringify(replies[calls++]));
   } });
