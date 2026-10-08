@@ -57,7 +57,7 @@ Search returns opportunities/tweets with source evidence; empty results are vali
 
 All five API requests send numeric `"fast": 1` by default. This requests faster generation with slightly lower quality. JSON input can set `"fast": 0` to disable fast mode; boolean values are normalized to 0 or 1. The reply `--fast` flag explicitly enables the default mode.
 
-The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Requests are not retried automatically. A server or proxy may enforce its own shorter timeout.
+The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Reply requests retry empty text up to five total attempts; network/timeout/HTTP errors and other methods are not retried automatically. A server or proxy may enforce its own shorter timeout.
 
 ## News manifest input
 
@@ -68,3 +68,7 @@ Request manifest overrides the server file for this generation only. Omit it to 
 ## Style acquisition priority
 
 First retrieve candidates with `sandhive style --account <handle> --json` unless confirmed samples are already saved. Then use accessible human chats/dialogues/files if retrieval is unavailable or insufficient. Ask for manual examples only for the remaining gap. Select actual samples, never the generated style summary. Show uncertain candidates with sources for authorship review; reuse established human originals without repeatedly asking. CLI validation still requires at least three sourced human samples.
+
+### Empty reply retries
+
+`/cli/generate-tweet` always receives `t: "1"`. On a successful JSON response with missing, null, false, empty, or whitespace-only reply text, the CLI makes up to five attempts total (the initial request plus four retries). It stops as soon as text is returned; after exhaustion it returns `no_draft`. Reply results include `attempts`. Each attempt can incur generation usage and has its own 20-minute timeout. No retries are made for HTTP errors, API errors, malformed responses, network failures, or timeouts. Post/search/style calls are unchanged. A dry run makes no attempts.

@@ -90,7 +90,7 @@ test('plain text, UTF-8 files, and stdin map to the same reply input', async () 
       const result = await run(['draft', 'reply', '--style-file', 'style.json', ...args, '--account', '@builder', '--dry-run', '--json'],
         conversation, undefined, cwd);
       assert.equal(result.exitCode, 0);
-      assert.deepEqual(result.result.payload, { tweet: conversation, user: { account: 'builder' }, externalRelies: samples.map(s => s.text), fast: 1 });
+      assert.deepEqual(result.result.payload, { t: '1', tweet: conversation, user: { account: 'builder' }, externalRelies: samples.map(s => s.text), fast: 1 });
     }
   });
 });
@@ -151,7 +151,7 @@ test('reply request uses the exact endpoint and preserves API metadata', async (
     assert.equal(url, GENERATE_REPLY_URL);
     assert.equal(options.method, 'POST');
     assert.equal(options.redirect, 'error');
-    assert.deepEqual(JSON.parse(options.body), { fast: 1, ...input });
+    assert.deepEqual(JSON.parse(options.body), { fast: 1, ...input, t: '1' });
     return new Response(JSON.stringify({ reply: 'Start with one relevant conversation.', wait: 1, gate_score: 7 }));
   } });
   assert.equal(calls, 1);
@@ -184,7 +184,7 @@ test('ambiguous timeout is not retried or advertised as automatically retryable'
 });
 
 test('malformed and unexpected API responses fail explicitly', async () => {
-  for (const body of ['not json', '{"reply":null}', '{"reply":""}', '[]']) {
+  for (const body of ['not json', '{"reply":42}', '[]']) {
     await assert.rejects(generateReply(input, { fetchImpl: async () => new Response(body) }),
       error => error.code === 'INVALID_RESPONSE');
   }
@@ -497,4 +497,35 @@ test('custom ICP description supports description-only and combined requests', a
   for (const content of [{ queries: ['pain'] }, { queries: ['pain'], icp_description: '' }, { queries: ['pain'], icp_description: 1 }, { queries: ['pain'], icp: 'custom', icp_description: description }]) {
     assert.equal((await run(['find', '--input', '-', '--json'], content)).exitCode, 2);
   }
+});
+
+test('reply generation retries empty text up to five total attempts and always sends t', async () => {
+  let calls = 0;
+  const result = await generateReply(input, { fetchImpl: async (url, options) => {
+    assert.equal(JSON.parse(options.body).t, '1');
+    const replies = [{}, { reply: null }, { reply: '' }, { reply: false }, { reply: 'Finally a reply' }];
+    return new Response(JSON.stringify(replies[calls++]));
+  } });
+  assert.equal(calls, 5);
+  assert.equal(result.attempts, 5);
+  assert.equal(result.draft.text, 'Finally a reply');
+  calls = 0;
+  const exhausted = await generateReply(input, { fetchImpl: async () => {
+    calls++;
+    return new Response('{"reply":"   "}');
+  } });
+  assert.equal(calls, 5);
+  assert.equal(exhausted.status, 'no_draft');
+  assert.equal(exhausted.attempts, 5);
+});
+
+test('post generation does not retry empty responses or receive t', async () => {
+  let calls = 0;
+  const result = await generateReply({ user: input.user }, { endpoint: 'https://api.sandhive.io/cli/generate-news-twitter-post', field: 'post', fetchImpl: async (url, options) => {
+    calls++;
+    assert.equal(JSON.parse(options.body).t, undefined);
+    return new Response('{"post":false}');
+  } });
+  assert.equal(calls, 1);
+  assert.equal(result.status, 'no_draft');
 });

@@ -237,7 +237,7 @@ Add `--json` for one structured result. The existing JSON input remains availabl
 sandhive draft reply --input examples/reply.json --style-file .sandhive/style.json --dry-run --json
 ```
 
-Results distinguish a draft, no draft, a preview, and an error. Commands do not prompt, and requests are not retried automatically. See the [CLI reference](skills/sandhive/references/cli.md) for fields and exit codes, and [API notes](docs/api.md) for service details and verification status.
+Results distinguish a draft, no draft, a preview, and an error. Commands do not prompt, and reply requests retry empty text up to five total attempts; other requests and failures are not retried automatically. See the [CLI reference](skills/sandhive/references/cli.md) for fields and exit codes, and [API notes](docs/api.md) for service details and verification status.
 
 ## Find conversations and retrieve candidate samples
 
@@ -252,7 +252,7 @@ Search requires `--icp-description` describing your actual target audience. For 
 
 All five API requests send numeric `"fast": 1` by default. This requests faster generation with slightly lower quality. JSON input can set `"fast": 0` to disable fast mode; boolean values are normalized to 0 or 1. The reply `--fast` flag explicitly enables the default mode.
 
-The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Requests are not retried automatically. A server or proxy may enforce its own shorter timeout.
+The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Reply requests retry empty text up to five total attempts; network/timeout/HTTP errors and other methods are not retried automatically. A server or proxy may enforce its own shorter timeout.
 
 ## Troubleshooting
 
@@ -270,3 +270,7 @@ The client timeout is **20 minutes (1,200,000 ms)** per request, including readi
 Run `npm test` for the offline test suite. Keep project files and commit messages in English.
 
 Distribution and service terms are being finalized. This repository does not currently grant an open-source license; the npm package remains private until release terms are ready.
+
+### Empty reply retries
+
+`/cli/generate-tweet` always receives `t: "1"`. On a successful JSON response with missing, null, false, empty, or whitespace-only reply text, the CLI makes up to five attempts total (the initial request plus four retries). It stops as soon as text is returned; after exhaustion it returns `no_draft`. Reply results include `attempts`. Each attempt can incur generation usage and has its own 20-minute timeout. No retries are made for HTTP errors, API errors, malformed responses, network failures, or timeouts. Post/search/style calls are unchanged. A dry run makes no attempts.

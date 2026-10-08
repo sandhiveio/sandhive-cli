@@ -1,5 +1,7 @@
 import { CliError } from './errors.js';
 
+export const MAX_REPLY_ATTEMPTS = 5;
+
 export const REQUEST_TIMEOUT_MS = 20 * 60 * 1000;
 
 export function fastValue(value = 1) {
@@ -63,7 +65,7 @@ export function buildReplyRequest(input, context, { fast = false } = {}) {
     invalid('Use verified human style_samples instead of externalRelies, style_prompt, or style.');
   }
   const samples = humanStyle(input.style_samples !== undefined ? input.style_samples : context?.style_samples);
-  const payload = { tweet: input.tweet, user: { account: input.user.account }, externalRelies: samples, fast: fastValue(input.fast) };
+  const payload = { t: "1", tweet: input.tweet, user: { account: input.user.account }, externalRelies: samples, fast: fastValue(input.fast) };
   if (context !== undefined) {
     validateContext(context);
     payload.externalRelies = [...samples,
@@ -149,6 +151,17 @@ export function buildPostRequest(input, context) {
   return { endpoint: rewrite ? REWRITE_POST_URL : GENERATE_POST_URL, payload };
 }
 
-export async function generateReply(payload, { endpoint = GENERATE_REPLY_URL, field = "reply", ...options } = {}) {
-  return normalizeReply(await postJson(endpoint, payload, options), field);
+export async function generateReply(payload, { endpoint = GENERATE_REPLY_URL, field = 'reply', ...options } = {}) {
+  const isReply = endpoint === GENERATE_REPLY_URL && field === 'reply';
+  const request = isReply ? { ...payload, t: '1' } : payload;
+  const limit = isReply ? MAX_REPLY_ATTEMPTS : 1;
+  for (let attempt = 1; attempt <= limit; attempt++) {
+    const response = await postJson(endpoint, request, options);
+    const empty = isReply && response && typeof response === 'object' && !Array.isArray(response)
+      && !response.error && (response.reply === undefined || response.reply === null || response.reply === false
+        || (typeof response.reply === 'string' && !response.reply.trim()));
+    if (empty && attempt < limit) continue;
+    const result = normalizeReply(empty ? { ...response, reply: false } : response, field);
+    return isReply ? { ...result, attempts: attempt } : result;
+  }
 }
