@@ -18,7 +18,7 @@ Usage:
   sandhive skill install --agent <codex|claude> --target <project-directory> [--json]
   sandhive draft post --manifest <brief> --account <handle> --style-file <file> [--dry-run] [--json]
   sandhive draft post [--text <draft> | --file <file|-> | --input <file|->] --context <file> [--json]
-  sandhive find --query <search> --icp <sandhive|arc> [--query <search>] [--max-items <1-50>] [--query-type <Latest|Top>] [--min-icp-score <number>] [--dry-run] [--json]
+  sandhive find --query <search> [--icp <sandhive|arc> | --icp-description <text>] [--query <search>] [--max-items <1-50>] [--query-type <Latest|Top>] [--min-icp-score <number>] [--dry-run] [--json]
   sandhive style --account <handle> [--refresh] [--max-items <1-200>] [--dry-run] [--json]
   sandhive find | style --input <file|-> [--dry-run] [--json]
   sandhive review | auth | usage   (planned; no API calls)
@@ -29,6 +29,7 @@ Options:
   --voice <text>       Writing voice for init (default: clear, concise, specific)
   --fact <text>        Verified fact for init; repeat to add more
   --example <text>     Legacy notes for init; never used as human style samples
+  --icp-description <text> Custom audience/problem/intent description for search
   --account <handle>   X handle; accepts an optional leading @
   --text <text>        Conversation text or post material
   --file <file|->      Conversation/post text file; - for stdin
@@ -96,7 +97,7 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       text: { type: 'string' }, file: { type: 'string' }, account: { type: 'string' },
       product: { type: 'string' }, audience: { type: 'string' }, voice: { type: 'string' },
       fact: { type: 'string', multiple: true }, example: { type: 'string', multiple: true },
-      query: { type: 'string', multiple: true }, icp: { type: 'string' },
+      query: { type: 'string', multiple: true }, icp: { type: 'string' }, 'icp-description': { type: 'string' },
       'max-items': { type: 'string' }, 'query-type': { type: 'string' }, 'min-icp-score': { type: 'string' }, refresh: { type: 'boolean' },
       fast: { type: 'boolean' }, 'dry-run': { type: 'boolean' }, json: { type: 'boolean' },
       help: { type: 'boolean' }, version: { type: 'boolean' },
@@ -112,7 +113,7 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       : command === 'draft reply' ? ['input', 'text', 'file', 'account', 'context', 'style-file', 'fast', 'dry-run', 'json']
       : command === 'init' ? ['product', 'audience', 'voice', 'fact', 'example', 'account', 'context', 'json']
       : command === 'skill install' ? ['agent', 'target', 'json'] : ['json'];
-    if (command === 'find') allowed.push('input', 'query', 'icp', 'max-items', 'query-type', 'min-icp-score', 'dry-run');
+    if (command === 'find') allowed.push('input', 'query', 'icp', 'icp-description', 'max-items', 'query-type', 'min-icp-score', 'dry-run');
     if (command === 'style') allowed.push('input', 'account', 'refresh', 'max-items', 'dry-run');
     for (const option of Object.keys(values)) {
       if (!allowed.includes(option)) throw new CliError('INVALID_INPUT', `Option --${option} is not supported for ${command}.`, { exitCode: 2 });
@@ -124,7 +125,7 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
         throw new CliError('INVALID_INPUT', 'Use either --input JSON or command flags, not both.', { exitCode: 2 });
       }
       const input = values.input !== undefined ? await loadJson(localPath(values.input), stdin)
-        : command === 'find' ? { queries: values.query, icp: values.icp, max_items: values['max-items'], query_type: values['query-type'], min_icp_score: values['min-icp-score'] }
+        : command === 'find' ? { queries: values.query, icp: values.icp, icp_description: values['icp-description'], max_items: values['max-items'], query_type: values['query-type'], min_icp_score: values['min-icp-score'] }
         : { user_id: account, refresh: values.refresh, max_items: values['max-items'] };
       const payload = command === 'find' ? buildSearchRequest(input) : buildStyleRequest(input);
       const endpoint = command === 'find' ? SEARCH_TWEETS_URL : USER_STYLE_URL;

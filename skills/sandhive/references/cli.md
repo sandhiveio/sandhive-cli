@@ -49,7 +49,7 @@ Exit codes: 0 success including no draft; 1 API/network failure; 2 invalid input
 
 ## Discovery and sample retrieval
 
-`sandhive find --query "..." --query "..." --icp sandhive --json` searches and scores posts. ICP supports sandhive/arc only. Options: max-items 1-50, query-type Latest/Top, min-icp-score numeric. `sandhive style --account handle --json` retrieves candidate messages; refresh and max-items 1-200 are optional. Both accept --input JSON, --dry-run, and --json. JSON fields: queries/icp for search, user_id for style; do not combine JSON input with command flags.
+`sandhive find --query "..." --query "..." --icp sandhive --json` searches and scores posts. Provide at least one of --icp sandhive|arc or --icp-description "...". Custom projects should use their own description. Latest is the default. Scoring runs in up to five backend workers and returns gate_score (reply suitability) and icp_score (ICP fit), sorted by ICP fit then reply suitability. Options: max-items 1-50, query-type Latest/Top, min-icp-score numeric. `sandhive style --account handle --json` retrieves candidate messages; refresh and max-items 1-200 are optional. Both accept --input JSON, --dry-run, and --json. JSON fields: queries plus icp and/or icp_description for search, user_id for style; do not combine JSON input with command flags.
 
 Search returns opportunities/tweets with source evidence; empty results are valid. Style returns style/samples and cache metadata; it never automatically saves or applies samples. Confirm human authorship before creating local style_samples. Generated summaries cannot be samples. Provider placeholders are rejected. Requests may incur scraping/model usage; no automatic retries.
 

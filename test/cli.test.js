@@ -476,3 +476,25 @@ test('invalid and conflicting manifests fail before sending a request', async ()
     assert.equal(result.result.error.code, 'INVALID_INPUT');
   }
 });
+
+test('custom ICP description supports description-only and combined requests', async () => {
+  const description = 'Founders who ship but need help with content; exclude autonomous bots.';
+  for (const icp of [undefined, 'sandhive']) {
+    const content = { queries: ['what are you building'], icp_description: description, ...(icp ? { icp } : {}) };
+    const preview = await run(['find', '--input', '-', '--dry-run', '--json'], content);
+    assert.equal(preview.exitCode, 0);
+    assert.equal(preview.result.payload.icp_description, description);
+    assert.equal(preview.result.payload.icp, icp);
+    assert.equal(preview.result.payload.query_type, 'Latest');
+    const live = await run(['find', '--input', '-', '--json'], content, async (url, options) => {
+      assert.deepEqual(JSON.parse(options.body), preview.result.payload);
+      return new Response('{"tweets":[]}');
+    });
+    assert.equal(live.exitCode, 0);
+  }
+  const flags = await run(['find', '--query', 'pain', '--icp-description', description, '--dry-run', '--json']);
+  assert.equal(flags.result.payload.icp_description, description);
+  for (const content of [{ queries: ['pain'] }, { queries: ['pain'], icp_description: '' }, { queries: ['pain'], icp_description: 1 }, { queries: ['pain'], icp: 'custom', icp_description: description }]) {
+    assert.equal((await run(['find', '--input', '-', '--json'], content)).exitCode, 2);
+  }
+});

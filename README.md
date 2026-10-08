@@ -242,11 +242,11 @@ Results distinguish a draft, no draft, a preview, and an error. Commands do not 
 ## Find conversations and retrieve candidate samples
 
 ```sh
-sandhive find --query "finding first customers" --icp sandhive --json
+sandhive find --query "what are you building" --query "content distribution founder" --icp-description "Founders and expert-led teams who ship product but need help turning work into posts and finding useful conversations. They approve every post themselves. Exclude generic consumers, meme accounts, and autonomous posting bots." --json
 sandhive style --account your_handle --json
 ```
 
-Search supports sandhive/arc predefined scoring. Evaluate relevance against your own product. Style retrieves candidate messages; confirm original human authorship before adding them to your style file. Generated style summaries are never samples. See the CLI reference for limits and refresh options.
+Search accepts a preset (`sandhive` or `arc`), a custom `--icp-description`, or both. For your own product, describe its actual audience, problem, desired outcome, and exclusions. Latest tweets are fetched by default; up to five backend workers score reply suitability and ICP fit. Scores are ranking signals, not proof of intent. Style retrieves candidate messages; confirm original human authorship before adding them to your style file. Generated style summaries are never samples. See the CLI reference for limits and refresh options.
 
 ## Fast mode and request timeout
 

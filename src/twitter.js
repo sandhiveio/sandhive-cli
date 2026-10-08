@@ -23,12 +23,16 @@ function rejectProviderPlaceholder(text) {
 }
 export function buildSearchRequest(input) {
   object(input);
-  fields(input, ['queries', 'icp', 'max_items', 'query_type', 'min_icp_score', 'fast']);
+  fields(input, ['queries', 'icp', 'icp_description', 'max_items', 'query_type', 'min_icp_score', 'fast']);
   if (!Array.isArray(input.queries) || !input.queries.length || !input.queries.every(q => typeof q === 'string' && q.trim())) invalid('Provide one or more non-empty queries.');
-  if (!['sandhive', 'arc'].includes(input.icp)) invalid('icp must be sandhive or arc; custom product scoring is not supported by this API.');
+  if (input.icp !== undefined && !['sandhive', 'arc'].includes(input.icp)) invalid('icp must be sandhive or arc.');
+  if (input.icp_description !== undefined && (typeof input.icp_description !== 'string' || !input.icp_description.trim())) invalid('icp_description must be non-empty text.');
+  if (input.icp === undefined && input.icp_description === undefined) invalid('Provide icp (sandhive or arc) or icp_description.');
   const query_type = input.query_type ?? 'Latest';
   if (!['Latest', 'Top'].includes(query_type)) invalid('query_type must be Latest or Top.');
-  const payload = { fast: fastValue(input.fast), queries: input.queries.map(q => q.trim()), icp: input.icp, max_items: count(input.max_items, 20, 50), query_type };
+  const payload = { fast: fastValue(input.fast), queries: input.queries.map(q => q.trim()), max_items: count(input.max_items, 20, 50), query_type };
+  if (input.icp !== undefined) payload.icp = input.icp;
+  if (input.icp_description !== undefined) payload.icp_description = input.icp_description.trim();
   if (input.min_icp_score !== undefined) {
     if (input.min_icp_score === null || input.min_icp_score === '' || typeof input.min_icp_score === 'boolean' || !Number.isFinite(Number(input.min_icp_score))) invalid('min_icp_score must be a finite number.');
     payload.min_icp_score = Number(input.min_icp_score);
