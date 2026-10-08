@@ -116,6 +116,21 @@ Read [the CLI reference](references/cli.md) before calling discovery or style co
 5. `sandhive style --account handle --json` retrieves candidate account messages. Account ownership, retrieval, publication, and approval do not prove human authorship. Confirm original human-written messages from sources or with the user before creating style_samples with text, source, and authorship. Never use the generated style summary as a sample. If authorship remains uncertain, show the collected candidates for authorship review and stop generation until resolved; manual replacement examples are the last resort. Refresh triggers a fresh fetch; results may be cached.
 6. Select the strongest opportunities and draft within the user's requested scope. Keep the source URL for review. Search and style requests may cause backend scraping/model usage; do not retry ambiguous failures automatically or run an unbounded search loop.
 
+## Search results and mandatory reply follow-up
+
+Every completed tweet search/analysis must end with a concrete reply-generation handoff. Do not stop after a list of links or a saved JSON file. Distinguish retrieved posts from selected opportunities and generated replies.
+
+Use this compact structure in the user's language:
+
+1. **Search outcome:** retrieved count, selected count (up to five), and the main exclusions. State the observed date range when available; do not invent dates or describe a post as fresh without evidence.
+2. **Ranked opportunities:** for each selected post, provide author and source link, a short description of what they said, **why it fits this project's ICP**, **a useful reply angle**, and **readiness** (ready / needs parent or other context). Scores can support the ranking but are not proof of intent. An angle is a factual direction, not a locally generated reply draft.
+3. **Reply next step (required):** name the recommended candidates and explicitly move toward CLI reply generation. If the user already requested replies, generate for the ready candidates within the agreed scope, display the provenance-labeled results, and report any blocked candidates. Do not ask for the same authorization again. If the request covered only search/analysis, recommend the strongest ready candidate and offer a concise choice: "Draft a reply to #1", "Draft replies to all ready candidates", or "Choose other candidates". Use the host's choice UI when available; otherwise numbered options. Avoid vague endings such as "Let me know if you want replies."
+4. **Evidence file (optional):** place the raw JSON link after the action handoff; it is supporting evidence, not the final outcome.
+
+When parent/context is missing, retrieve it through available authorized tools before drafting; never invent it. When style is missing, try CLI style retrieval, then available human dialogue/files, then manual input. Show the collected candidates for authorship review if required, and make the follow-up about the smallest blocker to generating the selected replies. Do not present missing setup as a reason to abandon the handoff.
+
+If no suitable candidates remain, report that clearly and offer two or three concrete search refinements rather than proposing replies to unsuitable posts. Do not fabricate candidates to reach a quota. A mandatory follow-up means a useful next action or blocked-result explanation, not automatic paid generation beyond the user's scope.
+
 ## Draft a reply
 
 Read [the CLI reference](references/cli.md) for inputs, outputs, and errors. Start with `sandhive --help` if the installed version is uncertain.
