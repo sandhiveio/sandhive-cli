@@ -18,7 +18,7 @@ Usage:
   sandhive skill install --agent <codex|claude> --target <project-directory> [--json]
   sandhive draft post --manifest <brief> --account <handle> --style-file <file> [--dry-run] [--json]
   sandhive draft post [--text <draft> | --file <file|-> | --input <file|->] --context <file> [--json]
-  sandhive find --query <search> [--icp <sandhive|arc> | --icp-description <text>] [--query <search>] [--max-items <1-50>] [--query-type <Latest|Top>] [--min-icp-score <number>] [--dry-run] [--json]
+  sandhive find --query <search> --icp-description <text> [--query <search>] [--max-items <1-50>] [--query-type <Latest|Top>] [--min-icp-score <number>] [--dry-run] [--json]
   sandhive style --account <handle> [--refresh] [--max-items <1-200>] [--dry-run] [--json]
   sandhive find | style --input <file|-> [--dry-run] [--json]
   sandhive review | auth | usage   (planned; no API calls)

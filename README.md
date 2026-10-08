@@ -246,7 +246,7 @@ sandhive find --query "what are you building" --query "content distribution foun
 sandhive style --account your_handle --json
 ```
 
-Search accepts a preset (`sandhive` or `arc`), a custom `--icp-description`, or both. For your own product, describe its actual audience, problem, desired outcome, and exclusions. Latest tweets are fetched by default; up to five backend workers score reply suitability and ICP fit. Scores are ranking signals, not proof of intent. Style retrieves candidate messages; confirm original human authorship before adding them to your style file. Generated style summaries are never samples. See the CLI reference for limits and refresh options.
+Search requires `--icp-description` describing your actual target audience. For your own product, describe its actual audience, problem, desired outcome, and exclusions. Latest tweets are fetched by default; up to five backend workers score reply suitability and ICP fit. Scores are ranking signals, not proof of intent. Style retrieves candidate messages; confirm original human authorship before adding them to your style file. Generated style summaries are never samples. See the CLI reference for limits and refresh options.
 
 ## Fast mode and request timeout
 

@@ -18,7 +18,7 @@ A successful response contains the mode's text field as a non-empty string or fa
 
 ## Discovery and sample retrieval
 
-POST /cli/search-score-tweets uses queries, at least one of icp (sandhive/arc) or icp_description (non-empty custom ICP text), optional max_items, query_type, and min_icp_score. POST /cli/user-twitter-style uses user_id, optional refresh and max_items. Search preserves post evidence; scores are not probabilities. Style returns candidate samples and cache metadata. Confirm original human authorship before using samples. Generated summaries are not samples. Shared postJson handles HTTP and timeout errors.
+POST /cli/search-score-tweets uses queries, icp_description (required non-empty ICP text for user requests), optional max_items, query_type, and min_icp_score. POST /cli/user-twitter-style uses user_id, optional refresh and max_items. Search preserves post evidence; scores are not probabilities. Style returns candidate samples and cache metadata. Confirm original human authorship before using samples. Generated summaries are not samples. Shared postJson handles HTTP and timeout errors.
 
 ## Fast mode and request timeout
 
@@ -41,4 +41,4 @@ The client timeout is **20 minutes (1,200,000 ms)** per request, including readi
 
 This wire-payload example uses placeholders for human samples. In CLI JSON input, supply sourced `style_samples` instead of `externalRelies`; the CLI converts them. Manifest is content/brief, never a style sample. `manifest` is supported only by the news generator, not the rewrite or reply endpoints. No server manifest file is changed.
 
-Search defaults to `query_type: Latest`. The backend scores individual tweets in up to five parallel workers for reply suitability (`gate_score`) and ICP fit (`icp_score`), returning rows sorted by ICP score then gate score. `min_icp_score` filters scored results. A custom description can be supplied alone; when combined with a preset, it is authoritative for ICP fit while the preset supplies product context. These are ranking signals, not probabilities or validated demand. Public CLI requests use `/cli/search-score-tweets`, mapped to the Flask `/search-score-tweets` route.
+Search defaults to `query_type: Latest`. The backend scores individual tweets in up to five parallel workers for reply suitability (`gate_score`) and ICP fit (`icp_score`), returning rows sorted by ICP score then gate score. `min_icp_score` filters scored results. Pass an explicit description of the project audience, problem, intent, and exclusions for ICP scoring. These are ranking signals, not probabilities or validated demand. Public CLI requests use `/cli/search-score-tweets`, mapped to the Flask `/search-score-tweets` route.
