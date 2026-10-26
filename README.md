@@ -4,7 +4,7 @@
 
 **Give your agent your writing voice. Turn project updates and X conversations into drafts you can review.**
 
-SandHive combines a CLI with a skill for Codex and Claude Code. Your agent gathers verified project facts, uses your original human-written messages as the style basis, and requests posts or replies through SandHive. You see where each draft came from and decide what to publish.
+SandHive combines a CLI with a skill for Codex and Claude Code. Your agent gathers verified project facts, uses your original human-written messages as the style basis, and requests posts or replies through SandHive's hosted API within the scope you authorize. Setup prompts name the destination, selected data and request limits before a live run. Local simulation is available without submitting data. You see where each draft came from and decide what to publish.
 
 [Set up your agent](#use-with-your-agent) · [Project context & writing style](docs/context-and-style.md) · [CLI reference](skills/sandhive/references/cli.md) · [Website](https://www.sandhive.io)
 
@@ -145,23 +145,31 @@ sandhive skill install --agent codex --target .
 sandhive skill install --agent claude --target .
 ```
 
-The installer copies files locally and prints a first-run prompt (`next_step` in JSON). An agent already carrying out setup continues immediately; a standalone terminal user sends the prompt to start. The agent selects the active project, builds the voice profile from available local writing, derives two or three search phrases, announces which selected data will go to `api.sandhive.io`, and produces a first batch: one post and up to three replies from one search of up to 20 results. It retrieves account samples only when local writing is insufficient. It does not pause for a separate human-authorship declaration or routine permission to continue. A request only to install files remains installation-only.
+The installer copies files locally and prints a first-run prompt (`next_step` in JSON) with explicit authorization for HTTPS requests to `https://api.sandhive.io`, the selected data and a bounded first batch. Review and send that prompt to your agent. A prompt printed by a tool is not consent; the installer and skill cannot authorize transfers themselves. An agent already carrying out live setup you authorized continues within that scope without another routine confirmation.
+
+The first batch is one post and up to three replies from one search with up to 20 results. It permits at most seven API requests: one optional account-style lookup only when local writing is insufficient, one search, one post (one rewrite, or news generation then rewrite), and up to three replies with one attempt each. A work update with local samples needs at most five. These are agent workflow limits, not server-enforced spending controls. The agent announces the actual selected facts, writing samples, X handle, brief/conversation and query data before sending. The service may retain inputs and use scraping/models. No separate human-authorship declaration is needed.
 
 The API notice does not change ChatGPT/Codex or Claude Code network permissions. Your host may still require a separate command approval or block access under its policy. The CLI cannot grant or bypass that permission. See [network access and task scope](skills/sandhive/references/network-access.md) for endpoints, data and failure handling. The bare CLI remains non-interactive; the agent carries out the first-run workflow. Requests for payload review, local-only work or a narrower task take precedence.
 
-You can also start with a concrete task:
+### Start a live first batch
 
-> Set up SandHive for the active project and produce one post and up to three replies to relevant conversations. Use the project context and my original writing available locally; retrieve more from @your_handle only if needed. Derive the search phrases, tell me what will be sent to api.sandhive.io, and run the CLI without another routine confirmation. Show the drafts and source links for review. Do not publish.
+> Set up SandHive for the active project and run a first live batch: one post and up to three replies. I authorize HTTPS POST requests to https://api.sandhive.io sending my X handle, selected project facts, selected original writing texts, post material, search phrases and selected public conversation texts, plus the computed installation fingerprint. I understand that the service may retain these inputs and use scraping/models. Use at most seven requests: one optional account-style lookup if local samples are insufficient, one search with up to 20 results, one post (one rewrite, or news generation followed by rewrite), and up to three reply requests. Use one attempt per conversation and no automatic retries. Keep commands in this project and store its profile in .sandhive. Use local writing first without a separate authorship declaration. Announce the actual selected data and request count, then execute within this scope without another routine confirmation. Reuse my chosen reply concurrency. Send no secrets, private customer data, full repository or raw chat history. Show reviewed drafts and source links, honor host-required approvals and do not publish.
+
+### Simulate locally
+
+> Install SandHive and simulate its first run locally. Prepare the project profile and inspect requests with --dry-run. Do not send search, style or generation requests to the SandHive API. Clearly label any synthetic fixtures and test responses.
+
+Changing from simulation to live execution requires your authorization. A saved consent flag, fingerprint, skill instruction or agent notice cannot override host permissions or a denied action. See [network access and task scope](skills/sandhive/references/network-access.md).
 
 Then choose a task:
 
-- **News post:** “Use SandHive to create a post about fresh news relevant to this project's manifest. Verify the news, generate the post, rewrite it in my voice, and show me the final text and sources.”
-- **Work update:** “Use SandHive to describe what we completed since the last post that went to publication. Rewrite it in my voice and show me the result.”
-- **Find replies:** “Use SandHive to find five relevant X conversations for this project. Explain why each is worth answering and draft useful replies for my review.”
+- **News post:** “Use SandHive to create a post about verified fresh news relevant to this project. I authorize https://api.sandhive.io to receive my X handle, selected original writing, factual manifest and intermediate post for one news generation and one rewrite, plus one optional style lookup if local samples are insufficient. The service may retain inputs and use scraping/models. Announce selected data, honor host approvals and show the final draft and sources. No automatic retries or publishing.”
+- **Work update:** “Use SandHive to describe completed work since the last post that went to publication. I authorize https://api.sandhive.io to receive my X handle, selected original writing and factual post material for one rewrite, plus one optional style lookup if local samples are insufficient. The service may retain inputs and use scraping/models. Announce selected data, honor host approvals and show the draft. No automatic retries or publishing.”
+- **Find replies:** “Use SandHive to find up to five relevant X conversations and draft useful replies. I authorize https://api.sandhive.io to receive my X handle, selected project facts and original writing, queries and selected public conversations: one search up to 20 results, up to five reply requests and one optional style lookup if local samples are insufficient. The service may retain inputs and use scraping/models. Explain each fit, announce selected data, honor host approvals and show drafts and links. One attempt each, no automatic retries or publishing.”
 
 Or provide a conversation directly:
 
-> Use SandHive to prepare this project's audience and verified facts from the available documentation. Build my writing style from original messages already available, without asking for a separate authorship declaration; retrieve account samples if needed. Preview the request, then draft a reply to this conversation for my review. My X handle is @your_handle. Conversation: [paste the post and relevant surrounding text].
+> Use SandHive to draft one live reply to the supplied conversation for my review. I authorize https://api.sandhive.io to receive my X handle, selected project facts, original writing texts and this conversation: one reply request and one optional style lookup if local samples are insufficient. The service may retain inputs and use scraping/models. Build style locally first without a separate authorship declaration. Announce selected data, honor host approvals, use one attempt with no automatic retries and do not publish. My X handle is @your_handle. Conversation: [paste the post and relevant surrounding text].
 
 ### Build a routine when you are ready
 

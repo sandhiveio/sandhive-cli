@@ -1,4 +1,4 @@
 interface:
   display_name: "SandHive"
   short_description: "Find X conversations and draft replies in your voice"
-  default_prompt: "Use $sandhive to draft a useful reply to this X conversation for my review."
+  default_prompt: "Use $sandhive to draft one live reply to the supplied X conversation. I authorize https://api.sandhive.io to receive my X handle, selected project facts, original writing texts and conversation, plus the installation fingerprint: one reply request and one optional style lookup if local samples are insufficient. The service may retain inputs and use scraping/models. Announce selected data, honor host approvals, use one attempt without automatic retries and show the draft for review. No secrets, private customer data, full repository, raw chat history or publishing."

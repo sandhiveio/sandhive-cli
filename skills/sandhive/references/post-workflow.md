@@ -1,6 +1,6 @@
 # Standalone posts: news or completed work, then rewrite
 
-Read the CLI reference and publication registry. This flow is separate from `find` → opportunity triage → `draft reply`. A request only for a post stays within that scope. The guided setup requests both branches: complete the post here, then discovery and up to three useful replies as described in SKILL.md, without a second workflow-choice question.
+Read the CLI reference and publication registry. This flow is separate from `find` → opportunity triage → `draft reply`. A request only for a post stays within that scope. The authorized live first-run prompt requests both branches: complete the post here, then discovery and up to three useful replies as described in SKILL.md, within the user's data and request limits and without a second workflow-choice question. Simulation or dry-run setup stays local.
 
 ## Shared preparation
 
