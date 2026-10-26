@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { main } from '../src/cli.js';
-import { checkForUpdates } from '../src/updates.js';
+import { checkForUpdates, shouldCheckForUpdates } from '../src/updates.js';
 
 const args = process.argv.slice(2);
-// Check only interactive runs; JSON, previews, pipes, and opted-out runs stay offline.
-const updates = process.stdout.isTTY && process.stderr.isTTY && !args.includes('--json') && !args.includes('--dry-run')
-  && process.env.SANDHIVE_NO_UPDATE_CHECK !== '1' ? checkForUpdates() : Promise.resolve(null);
+// Local setup and previews must not make background network requests.
 process.exitCode = await main(args);
-const notice = await updates;
+const notice = process.exitCode === 0 && shouldCheckForUpdates(args, { stdoutIsTTY: process.stdout.isTTY,
+  stderrIsTTY: process.stderr.isTTY, disabled: process.env.SANDHIVE_NO_UPDATE_CHECK })
+  ? await checkForUpdates() : null;
 if (notice) process.stderr.write(`${notice}\n`);

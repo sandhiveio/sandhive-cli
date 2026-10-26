@@ -1,11 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { checkForUpdates } from '../src/updates.js';
+import { checkForUpdates, shouldCheckForUpdates } from '../src/updates.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const commit = 'a'.repeat(40);
 const gitImpl = async () => ({ stdout: `${root}\n${commit}\n` });
+
+test('local setup and previews never opt into background update requests', () => {
+  const interactive = { stdoutIsTTY: true, stderrIsTTY: true };
+  for (const args of [[], ['--help'], ['--version'], ['init', '--product', 'Test'],
+    ['skill', 'install', '--agent', 'codex', '--target', '.'], ['review'], ['auth'], ['usage'],
+    ['find', '--dry-run'], ['style', '--json'], ['draft', 'post', '--dry-run'],
+    ['draft', 'reply', '--help'], ['unknown']]) {
+    assert.equal(shouldCheckForUpdates(args, interactive), false, args.join(' '));
+  }
+  for (const args of [['find'], ['style'], ['draft', 'post'], ['draft', 'reply']]) {
+    assert.equal(shouldCheckForUpdates(args, interactive), true);
+    assert.equal(shouldCheckForUpdates(args, { ...interactive, disabled: '1' }), false);
+    assert.equal(shouldCheckForUpdates(args, { ...interactive, stdoutIsTTY: false }), false);
+    assert.equal(shouldCheckForUpdates(args, { ...interactive, stderrIsTTY: false }), false);
+    assert.equal(shouldCheckForUpdates([...args, '--json'], interactive), false);
+    assert.equal(shouldCheckForUpdates([...args, '--dry-run'], interactive), false);
+  }
+});
 
 test('update checker reports newer commits without modifying the checkout', async () => {
   for (const status of ['ahead', 'diverged', 'identical', 'behind']) {

@@ -2,6 +2,8 @@
 
 All routes use POST JSON on `https://api.sandhive.io`:
 
+All five service requests carry the HTTP header `X-SandHive-Installation-Id` containing the CLI's persistent UUID v4. This is transport metadata; it is not added to JSON bodies, credentials or writing samples. The CLI creates it locally on first activity (including help/previews) in `~/.sandhive/installation.json`, or the directory set by `SANDHIVE_HOME`, and reuses it across projects and updates. Previews include the exact headers. No registration request is made during creation. The header identifies an installation profile; it provides no authentication, authorization or request deduplication. Server-side storage/aggregation of this header is not implemented by the CLI. Other API origins and GitHub update checks do not receive it.
+
 | CLI mode | Route | Existing backend fields | Response field |
 | --- | --- | --- | --- |
 | `draft reply` | `/cli/generate-tweet` | `tweet`, `user.account`, `externalRelies`, optional `fast` | `reply` |
@@ -12,13 +14,13 @@ The Python application exposes the corresponding routes without `/cli`; deployme
 
 The news generator accepts optional `manifest` as non-empty text. It uses that text instead of reading the account's server-side manifest, for this request only. Omitted manifest falls back to the server file. The backend also falls back for empty/non-string manifest, but the CLI rejects those values to avoid unintentionally using a different brief. Local context is not automatically converted to manifest. The backend splits multiple drafts on lines containing `---` and randomly selects one; send a single brief for a specific angle. The rewrite generator uses supplied `post` text. No invented server fields are sent.
 
-`style_samples` is a local CLI field: at least three original messages, each with non-empty text/source and `authorship: human`. Only sample text is sent in `externalRelies`. Reply context supplements these samples with explicitly labeled factual context/preferences. No sample can be replaced with an AI-generated voice description. The CLI cannot independently prove authorship; callers must establish it from original sources or the user's explicit assertion.
+`style_samples` is a local CLI field: at least three original messages, each with non-empty text/source and `authorship: human`. Only sample text is sent in `externalRelies`. Reply context supplements these samples with explicitly labeled factual context/preferences. No sample can be replaced with an AI-generated voice description. The CLI cannot independently prove authorship; the agent selects original writing from available sources without requiring a separate user declaration.
 
 A successful response contains the mode's text field as a non-empty string or false. False normalizes to `no_draft`; metadata is preserved without interpreting scores as probabilities or `wait` as seconds. HTTP errors, non-JSON responses, and incorrect text fields are explicit errors. Replies retry empty text up to five total attempts; there are no authentication, idempotency, or spending-limit contracts yet. Inputs are processed by a hosted service; do not send secrets or confidential material.
 
 ## Discovery and sample retrieval
 
-POST /cli/search-score-tweets uses queries, icp_description (required non-empty ICP text for user requests), optional max_items, query_type, and min_icp_score. POST /cli/user-twitter-style uses user_id, optional refresh and max_items. Search preserves post evidence; scores are not probabilities. Style returns candidate samples and cache metadata. Confirm original human authorship before using samples. Generated summaries are not samples. Shared postJson handles HTTP and timeout errors.
+POST /cli/search-score-tweets uses queries, icp_description (non-empty audience/problem/intent description for user requests), optional max_items, query_type, and min_icp_score. POST /cli/user-twitter-style uses user_id, optional refresh and max_items. Search preserves post evidence; scores are not probabilities. Style returns candidate samples and cache metadata. Select original message texts without a separate authorship confirmation. Generated summaries are not samples. Shared postJson handles installation headers, HTTP and timeout errors.
 
 ## Fast mode and request timeout
 

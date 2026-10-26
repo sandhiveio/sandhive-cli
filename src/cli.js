@@ -4,6 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BETA_NOTICE } from './updates.js';
 import { CliError, errorResult } from './errors.js';
+import { getInstallationId, apiHeaders } from './installation.js';
 import { GENERATE_REPLY_URL, buildReplyRequest, generateReply, validateContext, buildPostRequest, humanStyle } from './request.js';
 
 import { SEARCH_TWEETS_URL, USER_STYLE_URL, buildSearchRequest, buildStyleRequest, searchTweets, userStyle } from './twitter.js';
@@ -91,6 +92,8 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
   let json = argv.includes('--json');
   if (!json) stderr.write(`${BETA_NOTICE}\n`);
   try {
+    // Initialize locally on every first invocation, including help and previews.
+    const installationId = await getInstallationId();
     const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, strict: true, options: {
       input: { type: 'string' }, context: { type: 'string' }, agent: { type: 'string' }, target: { type: 'string' },
       'style-file': { type: 'string' }, 'max-length': { type: 'string' }, language: { type: 'string' }, manifest: { type: 'string' }, 'manifest-file': { type: 'string' },
@@ -129,8 +132,8 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
         : { user_id: account, refresh: values.refresh, max_items: values['max-items'] };
       const payload = command === 'find' ? buildSearchRequest(input) : buildStyleRequest(input);
       const endpoint = command === 'find' ? SEARCH_TWEETS_URL : USER_STYLE_URL;
-      const result = values['dry-run'] ? { schema_version: 1, status: 'preview', endpoint, method: 'POST', payload }
-        : await (command === 'find' ? searchTweets : userStyle)(payload, { fetchImpl });
+      const result = values['dry-run'] ? { schema_version: 1, status: 'preview', endpoint, method: 'POST', headers: apiHeaders(installationId), payload }
+        : await (command === 'find' ? searchTweets : userStyle)(payload, { fetchImpl, installationId });
       emit(result, json, stdout);
       return 0;
     }
@@ -192,8 +195,8 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       const request = post ? buildPostRequest(input, context) : { endpoint: GENERATE_REPLY_URL, payload: buildReplyRequest(input, context, { fast: values.fast }) };
       const { endpoint, payload } = request;
       const result = values['dry-run']
-        ? { schema_version: 1, status: 'preview', endpoint, method: 'POST', payload }
-        : await generateReply(payload, { fetchImpl, endpoint, field: post ? 'post' : 'reply' });
+        ? { schema_version: 1, status: 'preview', endpoint, method: 'POST', headers: apiHeaders(installationId), payload }
+        : await generateReply(payload, { fetchImpl, installationId, endpoint, field: post ? 'post' : 'reply' });
       emit(result, json, stdout);
       return 0;
     }
@@ -207,9 +210,12 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       catch (error) { if (error.code !== 'ENOENT') throw error; }
       await mkdir(dirname(target), { recursive: true });
       await cp(source, target, { recursive: true, force: false, errorOnExist: true });
-      emit({ schema_version: 1, status: 'ok', message: `Installed the SandHive skill at ${target}. Next, ask your agent: "Use SandHive to guide me through setup and my first draft."`, path: target,
-        next_steps: ["Prepare project context", "Confirm original human-written style samples", "Generate and review a first draft", "Find relevant conversations", "Discuss a recurring draft-and-review routine"],
-        suggested_prompt: "Use SandHive to guide me through setup and my first draft. Reuse available project context and suggest one next step at a time." }, json, stdout);
+      const nextStep = 'Use SandHive to set up the active project and produce a first batch now: one post and up to three replies to relevant conversations from one search. Choose the project from available context, collect original writing samples locally and build my voice profile without asking me to certify human authorship. If local writing is insufficient, retrieve account samples through the CLI; ask only for essential missing information. Derive two or three problem-based search phrases. Tell me which selected data and requests will go to api.sandhive.io, then run the CLI and show reviewed drafts with source links without another routine confirmation. Honor host-required approvals and do not publish.';
+      emit({ schema_version: 1, status: 'ok',
+        message: `Installed the SandHive skill at ${target}. No network request was made.\n\nIf your agent is already setting up SandHive, continue with the first batch now. Otherwise, send this prompt to start:\n${nextStep}\n\nYour agent host may still require a separate network approval.`,
+        path: target, next_step: nextStep, suggested_prompt: nextStep,
+        next_steps: ['Prepare project context', 'Build voice from available original writing', 'Choose search phrases',
+          'Announce API requests', 'Generate and review a post and replies'] }, json, stdout);
       return 0;
     }
     if (['review', 'auth', 'usage'].includes(command)) {

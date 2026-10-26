@@ -7,6 +7,14 @@ export const BETA_NOTICE = 'SandHive CLI is in beta and active development. Upda
 const exec = promisify(execFile);
 const installation = fileURLToPath(new URL('../', import.meta.url));
 
+export function shouldCheckForUpdates(args, { stdoutIsTTY, stderrIsTTY, disabled } = {}) {
+  if (!stdoutIsTTY || !stderrIsTTY || disabled === '1') return false;
+  if (args.some(arg => ['--json', '--dry-run', '--help', '--version'].includes(arg))) return false;
+  // Only live service commands need a background network check.
+  return ['find', 'style'].includes(args[0])
+    || (args[0] === 'draft' && ['post', 'reply'].includes(args[1]));
+}
+
 export async function checkForUpdates({ fetchImpl = globalThis.fetch, gitImpl = exec } = {}) {
   try {
     const { stdout } = await gitImpl('git', ['-c', `safe.directory=${installation}`, 'rev-parse', '--show-toplevel', 'HEAD'],

@@ -1,4 +1,5 @@
 import { CliError } from './errors.js';
+import { getInstallationId, apiHeaders } from './installation.js';
 
 export const MAX_REPLY_ATTEMPTS = 5;
 
@@ -89,13 +90,16 @@ export function normalizeReply(response, field = 'reply') {
   };
 }
 
-export async function postJson(endpoint, payload, { fetchImpl = globalThis.fetch, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
+export async function postJson(endpoint, payload, { fetchImpl = globalThis.fetch, timeoutMs = REQUEST_TIMEOUT_MS, installationId } = {}) {
+  const headers = new URL(endpoint).origin === 'https://api.sandhive.io'
+    ? apiHeaders(installationId ?? await getInstallationId())
+    : { 'Content-Type': 'application/json', Accept: 'application/json' };
   let response;
   let body;
   try {
     response = await fetchImpl(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers,
       body: JSON.stringify({ fast: 1, ...payload }),
       redirect: 'error',
       signal: AbortSignal.timeout(timeoutMs),

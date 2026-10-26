@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
 import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
@@ -6,6 +6,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { main } from '../src/cli.js';
 import { GENERATE_REPLY_URL, buildReplyRequest, generateReply, REQUEST_TIMEOUT_MS, postJson } from '../src/request.js';
+import { getInstallationId, INSTALLATION_ID_HEADER } from '../src/installation.js';
+
+const identityDirectory = await mkdtemp(join(tmpdir(), 'sandhive-cli-identity-test-'));
+const previousSandhiveHome = process.env.SANDHIVE_HOME;
+process.env.SANDHIVE_HOME = identityDirectory;
+after(async () => {
+  if (previousSandhiveHome === undefined) delete process.env.SANDHIVE_HOME;
+  else process.env.SANDHIVE_HOME = previousSandhiveHome;
+  assert.ok(identityDirectory.startsWith(join(tmpdir(), 'sandhive-cli-identity-test-')));
+  await rm(identityDirectory, { recursive: true, force: true });
+});
 
 const samples = ['First original message', 'Second original message', 'Third original message'].map(text => ({ text, source: 'test fixture: human authorship assertion', authorship: 'human' }));
 const input = { tweet: 'How do you find useful conversations?', user: { account: 'example_builder' }, style_samples: samples };
@@ -237,9 +248,13 @@ test('skill installation copies all references and refuses to overwrite', async 
       const result = await run(['skill', 'install', '--agent', agent, '--target', target, '--json']);
       assert.equal(result.exitCode, 0);
       assert.equal(result.result.next_steps.length, 5);
-      assert.match(result.result.suggested_prompt, /one next step at a time/);
+      assert.equal(result.result.suggested_prompt, result.result.next_step);
       const reference = await readFile(join(result.result.path, 'references', 'cli.md'), 'utf8');
       assert.ok(reference.includes('NOT_IMPLEMENTED'));
+      assert.equal(typeof result.result.next_step, 'string');
+      assert.ok(result.result.next_step.length > 0);
+      const networkReference = await readFile(join(result.result.path, 'references', 'network-access.md'), 'utf8');
+      assert.equal(networkReference, await readFile(new URL('../skills/sandhive/references/network-access.md', import.meta.url), 'utf8'));
       const duplicate = await run(['skill', 'install', '--agent', agent, '--target', target, '--json']);
       assert.equal(duplicate.exitCode, 2);
       assert.equal(duplicate.result.error.code, 'ALREADY_EXISTS');
@@ -376,7 +391,8 @@ test('provider placeholder data is rejected for both search and voice', async ()
   }
 });
 
-test('all five endpoint requests default to numeric fast mode', async () => {
+test('all five endpoints send the persistent installation ID shown in previews and numeric fast mode', async () => {
+  const installationId = await getInstallationId();
   for (const [kind, content, body] of [
     ['reply', input, { reply: 'Reply' }],
     ['post', { user: input.user, style_samples: samples }, { post: 'Post' }],
@@ -387,8 +403,11 @@ test('all five endpoint requests default to numeric fast mode', async () => {
     const args = kind === 'reply' || kind === 'post' ? ['draft', kind] : [kind];
     const preview = await run([...args, '--input', '-', '--dry-run', '--json'], content);
     assert.equal(preview.result.payload.fast, 1);
+    assert.equal(preview.result.headers[INSTALLATION_ID_HEADER], installationId);
     const live = await run([...args, '--input', '-', '--json'], content, async (url, options) => {
       assert.equal(JSON.parse(options.body).fast, 1);
+      assert.deepEqual(options.headers, preview.result.headers);
+      assert.equal(options.headers[INSTALLATION_ID_HEADER], installationId);
       return new Response(JSON.stringify(body));
     });
     assert.equal(live.exitCode, 0);

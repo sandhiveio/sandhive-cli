@@ -8,7 +8,7 @@ Supply `--style-file <file>` containing a JSON array, or `style_samples` in requ
 { "text": "Original message written by the user", "source": "URL or supplied file/location", "authorship": "human" }
 ```
 
-These are placeholders, not usable samples. Never mark generated, rewritten, or unknown-origin text as human. The CLI verifies the assertion structure, not actual authorship. Missing samples produce `INVALID_INPUT`, exit 2, before sending. Explicit request samples take precedence over context samples; invalid explicit samples do not fall back to context. Source references and authorship metadata stay local. The API receives message text through its existing `externalRelies` field. `--voice` and legacy `examples` are not an alternate sample source. Free-form request fields `externalRelies`, `style_prompt`, and `style` are rejected.
+These are placeholders, not usable samples. Original human writing matters for style quality; exclude known generated/rewritten texts and other authors' quotations. The agent selects originals from available sources and fills authorship metadata without asking for a separate user declaration. The CLI validates metadata structure, not actual authorship. Missing samples produce `INVALID_INPUT`, exit 2, before sending. Explicit request samples take precedence over context samples; invalid explicit samples do not fall back to context. Source references and authorship metadata stay local. The API receives message text through its existing `externalRelies` field. `--voice` and legacy `examples` are not an alternate sample source. Free-form request fields `externalRelies`, `style_prompt`, and `style` are rejected.
 
 ## Local context
 
@@ -16,7 +16,7 @@ These are placeholders, not usable samples. Never mark generated, rewritten, or 
 sandhive init --product "..." --audience "..." --account your_handle --voice "..." --fact "..."
 ```
 
-Creates `.sandhive/context.json`, never overwriting a profile. Add confirmed `style_samples` before drafting. Only an explicit `--context` loads it. Product/audience/facts and voice preferences supplement reply requests; source metadata is not sent. Post rewriting gets its factual material from the supplied text. News generation uses an explicit manifest when supplied, otherwise the server manifest. Local context facts are not uploaded automatically.
+Creates `.sandhive/context.json`, never overwriting a profile. Add selected original writing as `style_samples` before drafting. Only an explicit `--context` loads it. Product/audience/facts and voice preferences supplement reply requests; source metadata is not sent. Post rewriting gets its factual material from the supplied text. News generation uses an explicit manifest when supplied, otherwise the server manifest. Local context facts are not uploaded automatically.
 
 ## Replies
 
@@ -39,19 +39,21 @@ Text/file supplies material to `/cli/rewrite-twitter-post`; no text source uses 
 
 ## Output and errors
 
-`--dry-run` returns endpoint, method, and exact wire payload without sending. `--json` emits one JSON result and never prompts. `draft` contains `draft.text`, `draft.platform: x`, and raw `api` metadata; `no_draft` contains `draft: null`. No exact skip reason is inferred. `preview` describes the request. Errors contain `error.code`, message, retryability, and optional retry-after.
+`--dry-run` returns endpoint, method, headers and exact wire payload without sending. Headers include `X-SandHive-Installation-Id`, a persistent UUID v4 created locally on the first invocation in `~/.sandhive/installation.json` (override the directory with `SANDHIVE_HOME`). It is reused across projects/updates and sent only to SandHive API, not GitHub or other origins. Help and previews also initialize this local file. An unreadable or invalid store produces `INSTALLATION_ERROR` before any API request; the file is not silently replaced. This ID is not authentication or an idempotency key.
+
+`--json` emits one JSON result and never prompts. `draft` contains `draft.text`, `draft.platform: x`, and raw `api` metadata; `no_draft` contains `draft: null`. No exact skip reason is inferred. `preview` describes the request. Errors contain `error.code`, message, retryability, and optional retry-after.
 
 Exit codes: 0 success including no draft; 1 API/network failure; 2 invalid input or existing destination; 3 `NOT_IMPLEMENTED`. Rate limits preserve Retry-After. Timeout/network errors may have reached the server and are not retried automatically. Requests have a 20-minute timeout. No draft is published or recorded as approved.
 
 ## Skill installation and planned commands
 
-`sandhive skill install --agent codex|claude --target <directory>` copies the skill and references into the project's host-specific skill folder and refuses overwrite. `review`, `auth`, and `usage` return `NOT_IMPLEMENTED` without network calls.
+`sandhive skill install --agent codex|claude --target <directory>` copies the skill and references into the project's host-specific skill folder and refuses overwrite. Installation is local, skips update checks, and returns a first-run prompt as `next_step` (also printed in terminal output). An agent already carrying out setup continues to project/style preparation, an API notice and a first batch of one post and up to three replies; a standalone terminal user sends the prompt to start that task. Installation itself cannot start a chat or grant host permissions. See [network access and task scope](network-access.md). `review`, `auth`, and `usage` return `NOT_IMPLEMENTED` without network calls.
 
 ## Discovery and sample retrieval
 
 `sandhive find --query "..." --query "..." --icp-description "..." --json` searches and scores posts. User searches require --icp-description "..." describing the project's own audience. Latest is the default. Scoring runs in up to five backend workers and returns gate_score (reply suitability) and icp_score (ICP fit), sorted by ICP fit then reply suitability. Options: max-items 1-50, query-type Latest/Top, min-icp-score numeric. `sandhive style --account handle --json` retrieves candidate messages; refresh and max-items 1-200 are optional. Both accept --input JSON, --dry-run, and --json. JSON fields: queries plus icp_description for search, user_id for style; do not combine JSON input with command flags.
 
-Search returns opportunities/tweets with source evidence; empty results are valid. Style returns style/samples and cache metadata; it never automatically saves or applies samples. Confirm human authorship before creating local style_samples. Generated summaries cannot be samples. Provider placeholders are rejected. Requests may incur scraping/model usage; no automatic retries.
+Search returns opportunities/tweets with source evidence; empty results are valid. Style returns style/samples and cache metadata; the bare CLI never automatically saves or applies samples. The agent can select original message texts and save local style_samples without a separate user authorship confirmation. Reuse local writing before retrieving more. Generated summaries cannot be samples. Provider placeholders are rejected. Requests may incur scraping/model usage; no automatic retries.
 
 ## Fast mode and request timeout
 
@@ -67,7 +69,7 @@ Request manifest overrides the server file for this generation only. Omit it to 
 
 ## Style acquisition priority
 
-First retrieve candidates with `sandhive style --account <handle> --json` unless confirmed samples are already saved. Then use accessible human chats/dialogues/files if retrieval is unavailable or insufficient. Ask for manual examples only for the remaining gap. Select actual samples, never the generated style summary. Show uncertain candidates with sources for authorship review; reuse established human originals without repeatedly asking. CLI validation still requires at least three sourced human samples.
+Reuse available local original writing from saved samples, accessible user dialogue or files first. If more is needed, retrieve candidates with `sandhive style --account <handle> --json`. Ask for manual examples only for the remaining gap after these sources are exhausted. Select actual original message texts, never the generated style summary, and save source metadata without a separate user authorship declaration. CLI validation still requires at least three sourced human samples.
 
 ### Empty reply retries
 

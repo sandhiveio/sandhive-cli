@@ -6,9 +6,31 @@
 
 SandHive combines a CLI with a skill for Codex and Claude Code. Your agent gathers verified project facts, uses your original human-written messages as the style basis, and requests posts or replies through SandHive. You see where each draft came from and decide what to publish.
 
-[Website](https://www.sandhive.io) · [CLI reference](skills/sandhive/references/cli.md) · [Roadmap](docs/roadmap.md) · [Issues](https://github.com/sandhiveio/sandhive-cli/issues)
+[Set up your agent](#use-with-your-agent) · [Project context & writing style](docs/context-and-style.md) · [CLI reference](skills/sandhive/references/cli.md) · [Website](https://www.sandhive.io)
 
-> Early preview: post and reply drafting, local project context, and agent skill installation are available. Full conversation retrieval, persistent review, and key activation are planned. There is no automatic publishing or npm release yet.
+## Your project context. Your writing style.
+
+**Project context:** Your agent uses the project context and completed work it already knows. No new interface to learn.
+
+**Writing style:** Provide examples of your own posts, or let SandHive retrieve candidates from your X account. Your agent checks the samples and uses them to guide the drafts.
+
+Start with [agent setup](#use-with-your-agent), or follow the [context and style guide](docs/context-and-style.md) for the terminal workflow and data boundaries.
+
+> Early preview: post and reply drafting, discovery, local project context, and agent skill installation are available. The agent skill maintains a local publication registry. Full conversation retrieval, server-side review/history, and key activation are planned. There is no automatic publishing or npm release yet.
+
+[Roadmap](docs/roadmap.md) · [Issues](https://github.com/sandhiveio/sandhive-cli/issues)
+
+## Choose your workflow
+
+| Goal | What the agent does |
+| --- | --- |
+| Post about fresh news | Verifies recent sources, combines one relevant news angle with your project manifest, generates a news post, then restyles it through rewrite before showing you the final text. |
+| Share what you built | Reads what went to publication last time, prepares a verified account of subsequent work, then rewrites it in your voice. |
+| Join relevant conversations | Searches X, checks relevance and intent, skips weak matches, and drafts useful replies for your review. |
+
+Posts and replies are separate workflows. The news branch makes two API requests; the completed-work branch uses rewrite directly. Live requests use the hosted service and may incur backend usage. News verification requires browsing tools in your agent environment; the CLI itself is not a news browser.
+
+The skill records reviewed posts in `.sandhive/posts.json`. Tell your agent when a post actually went to publication so it can remember the exact text and covered work for the next update. Approval alone is not a publication handoff. The bare CLI does not maintain this registry automatically.
 
 ## AI agents: install the skill first
 
@@ -102,9 +124,15 @@ From your `sandhive-cli` checkout:
 git pull --ff-only
 ```
 
-The CLI displays the beta notice on every run (in JSON results, it appears as `notice`). Interactive terminal runs also check GitHub for newer commits, without downloading or applying updates. The check has short time limits and failures do not fail your command. JSON output, dry runs, and non-interactive runs skip this network check. Set `SANDHIVE_NO_UPDATE_CHECK=1` to disable automatic checks. If Git reports divergent branches or local changes, review them before updating.
+The CLI displays the beta notice on every run (in JSON results, it appears as `notice`). Interactive live service commands also check GitHub for newer commits, without downloading or applying updates. The check has short time limits and failures do not fail your command. Local commands (`init`, `skill install`, help/version and planned commands), JSON output, dry runs, and non-interactive runs skip this network check. Set `SANDHIVE_NO_UPDATE_CHECK=1` to disable automatic checks. If Git reports divergent branches or local changes, review them before updating.
 
 Installed agent skills are copies: after updating the repository, refresh those copies as needed so your agent uses the current workflow.
+
+## Installation identity
+
+The first CLI invocation, including `--help`, `--version` or a dry run, creates a random UUID in `~/.sandhive/installation.json`. Subsequent runs reuse it across projects and CLI updates. This identifies the CLI's local user profile, not a project or X account; it is not derived from hardware or personal information. Set `SANDHIVE_HOME` to a persistent directory to use a separate installation store, for example in a container.
+
+Every SandHive API request includes `X-SandHive-Installation-Id: <uuid>`. JSON request bodies are unchanged. Previews show this header without making a network request. The ID is not sent to GitHub update checks or other API origins. Creation is local and does not register the installation on the server until a live API request is made. Deleting the identity file starts a new identity on the next run. An unreadable or invalid store produces `INSTALLATION_ERROR` before any API request, rather than silently changing identity. The ID is not an authentication token or an idempotency key.
 
 ## Use with your agent
 
@@ -116,13 +144,23 @@ sandhive skill install --agent codex --target .
 sandhive skill install --agent claude --target .
 ```
 
-### Start with a guided first run
+The installer copies files locally and prints a first-run prompt (`next_step` in JSON). An agent already carrying out setup continues immediately; a standalone terminal user sends the prompt to start. The agent selects the active project, builds the voice profile from available local writing, derives two or three search phrases, announces which selected data will go to `api.sandhive.io`, and produces a first batch: one post and up to three replies from one search of up to 20 results. It retrieves account samples only when local writing is insufficient. It does not pause for a separate human-authorship declaration or routine permission to continue. A request only to install files remains installation-only.
 
-After installation, ask your agent:
+The API notice does not change ChatGPT/Codex or Claude Code network permissions. Your host may still require a separate command approval or block access under its policy. The CLI cannot grant or bypass that permission. See [network access and task scope](skills/sandhive/references/network-access.md) for endpoints, data and failure handling. The bare CLI remains non-interactive; the agent carries out the first-run workflow. Requests for payload review, local-only work or a narrower task take precedence.
 
-> Use SandHive to guide me through setup and my first draft. Reuse this project's context, help me confirm my original writing samples, and suggest one next step at a time.
+You can also start with a concrete task:
 
-The skill walks you from project context and human samples to a first reviewed draft, then relevant conversations. It reads available project material first and proposes a compact context summary for review. Missing choices use short options rather than an open-ended questionnaire: **validate the core idea**, **maintain the social layer**, or **both**. It reuses completed steps and carries out the next reasonable action within your request, instead of repeatedly asking whether to continue. Questions are reserved for missing essentials and real decisions. Installing the skill copies files; use this prompt to start the guided workflow in your agent.
+> Set up SandHive for the active project and produce one post and up to three replies to relevant conversations. Use the project context and my original writing available locally; retrieve more from @your_handle only if needed. Derive the search phrases, tell me what will be sent to api.sandhive.io, and run the CLI without another routine confirmation. Show the drafts and source links for review. Do not publish.
+
+Then choose a task:
+
+- **News post:** “Use SandHive to create a post about fresh news relevant to this project's manifest. Verify the news, generate the post, rewrite it in my voice, and show me the final text and sources.”
+- **Work update:** “Use SandHive to describe what we completed since the last post that went to publication. Rewrite it in my voice and show me the result.”
+- **Find replies:** “Use SandHive to find five relevant X conversations for this project. Explain why each is worth answering and draft useful replies for my review.”
+
+Or provide a conversation directly:
+
+> Use SandHive to prepare this project's audience and verified facts from the available documentation. Build my writing style from original messages already available, without asking for a separate authorship declaration; retrieve account samples if needed. Preview the request, then draft a reply to this conversation for my review. My X handle is @your_handle. Conversation: [paste the post and relevant surrounding text].
 
 ### Build a routine when you are ready
 
@@ -130,19 +168,8 @@ After a useful first result, the agent can suggest a recurring draft-and-review 
 
 > Help me set up a recurring SandHive routine. Propose a cadence and per-run limits, confirm my timezone, and use this host's scheduler if available. Keep every draft for my review and do not publish automatically.
 
-A schedule is created only when you request it and supply the necessary details. SandHive CLI has no built-in scheduler; scheduling depends on your agent host or your own scheduler. Each run still uses confirmed human samples and CLI generation. Search and generation may incur service usage. No meaningful update means no invented post.
+A schedule is created only when you request it and supply the necessary details. SandHive CLI has no built-in scheduler; scheduling depends on your agent host or your own scheduler. Each run still uses selected original writing samples and CLI generation. Search and generation may incur service usage. No meaningful update means no invented post.
 
-### Reply to a conversation
-
-> Use SandHive to draft a reply to this conversation: [paste the post and relevant context]. Read this project's docs for verified facts. Use only confirmed messages I wrote myself as style samples; ask me if you need them. My X handle is @your_handle. Preview the request, then generate through the CLI and show the labeled draft for review.
-
-### Turn completed work into a post
-
-> Use SandHive to prepare an X post about the export feature we just shipped. Verify the change from this repo, prepare a short manifest, and generate through the CLI using my confirmed human-written samples. Do not invent results or customer reactions. Show the labeled draft for my review.
-
-### Compare the effect
-
-> For the same update, show a local baseline and the actual SandHive CLI result side by side. Label both clearly. Keep the facts the same and explain the differences you can see in wording, rhythm, and tone. Do not treat either generated version as a human writing sample.
 
 The agent prepares a compact local profile, calls the CLI, and helps you review the draft. It uses sources available in its session; access to other chats is not assumed. The same [skill](skills/sandhive/SKILL.md) is used for both agents.
 
@@ -175,7 +202,7 @@ This creates `.sandhive/context.json` locally without an API request. Edit it as
 
 ### 2. Retrieve your style first
 
-With an agent, start with `sandhive style --account your_handle --json`. The skill first tries X retrieval through the CLI, then actual human messages in accessible chats/files, and only then asks for manual examples. It shows the collected candidates for authorship review when needed, so you do not have to hunt for messages it can already retrieve. Confirmed samples are saved and reused.
+With an agent, reuse original writing already available in local samples, files or accessible user dialogue first. If more is needed, retrieve account messages with `sandhive style --account your_handle --json`. The agent selects usable originals and saves them with source metadata without asking for a separate authorship declaration. Manual examples are a last resort for the remaining gap.
 
 ### Human-written sample format
 
@@ -189,7 +216,7 @@ Save at least three established human originals in `.sandhive/style.json`. Use r
 ]
 ```
 
-Replace these placeholders with your own writing. **Never use AI-generated or AI-rewritten drafts as style samples.** Publication or approval does not establish human authorship. The CLI validates your authorship assertion and source references; it cannot independently prove authorship. Missing or uncertain samples must be resolved before generation. `--voice` adds preferences; it cannot substitute for real samples. You can also store this array as `style_samples` in your context.
+Replace these placeholders with your own writing. **Original human writing is important for style quality; exclude known AI drafts and rewrites.** The agent can select original messages from available sources and fill authorship metadata without a separate user declaration. The CLI validates metadata and source references; it cannot independently prove authorship. At least three usable samples are required. `--voice` adds preferences; it cannot substitute for real samples. You can also store this array as `style_samples` in your context.
 
 ### 3. Preview a reply request
 
@@ -221,13 +248,21 @@ Rewrite supplied material into a post using your human-written style:
 sandhive draft post --file update.txt --context .sandhive/context.json --style-file .sandhive/style.json --max-length 280 --json
 ```
 
-Use verified updates in `update.txt`. For news-post generation, supply a brief with `--manifest` or `--manifest-file`:
+Use verified updates in `update.txt`. For news-post generation, prepare `manifest.md` with verified project facts, one recent news angle, source-backed facts and dates, then generate:
 
 ```sh
-sandhive draft post --manifest "We shipped manifest input for SandHive CLI. Explain that agents can supply a brief and request an X draft using human-written style samples. Do not invent adoption or results." --account your_handle --style-file .sandhive/style.json --language English --max-length 280 --json
+sandhive draft post --manifest-file manifest.md --account your_handle --style-file .sandhive/style.json --language English --max-length 280 --json
 ```
 
-For a longer brief, use `--manifest-file manifest.md`. The supplied text is sent as `manifest` and overrides the server manifest for this request; it does not save or update a server file. Omit the manifest and all post text sources to use the account's existing server-side manifest. JSON input can include `manifest` instead. Do not combine a manifest with rewrite text (`--text`, `--file`, or JSON `post`). Local project facts are not uploaded automatically: include the relevant verified facts in your brief. `--language` applies only to news generation. Add `--dry-run` to inspect the request. All drafts require manual review.
+On a successful `draft` result, save only `draft.text` as UTF-8 `news-draft.txt`, check its facts, and restyle it:
+
+```sh
+sandhive draft post --file news-draft.txt --account your_handle --style-file .sandhive/style.json --max-length 280 --json
+```
+
+Review the rewritten text before publishing. If generation or rewrite fails or returns `no_draft`, stop that chain; do not retry automatically. The intermediate generated text is content to rewrite, never a human style sample.
+
+Short briefs can use `--manifest "..."`. The supplied text overrides the server manifest for this request; it does not update a server file. Omitting manifest and post text uses the account's server manifest. Do not combine manifest with rewrite text. Local project facts are not uploaded automatically: include them in the brief. `--language` applies only to news generation. Add `--dry-run` to preview an individual request. See the [post workflow](skills/sandhive/references/post-workflow.md) and [registry contract](skills/sandhive/references/publication-registry.md) for the agent-managed process.
 
 ## For agents and scripts
 
@@ -246,7 +281,7 @@ sandhive find --query "what are you building" --query "content distribution foun
 sandhive style --account your_handle --json
 ```
 
-Search requires `--icp-description` describing your actual target audience. For your own product, describe its actual audience, problem, desired outcome, and exclusions. Latest tweets are fetched by default; up to five backend workers score reply suitability and ICP fit. Scores are ranking signals, not proof of intent. The skill returns ranked opportunities with ICP reasons, a reply angle, and context readiness, then always provides a concrete reply-generation next step. If replies were already requested, it generates them through the CLI; otherwise it offers a simple candidate choice. Style retrieves candidate messages; confirm original human authorship before adding them to your style file. Generated style summaries are never samples. See the CLI reference for limits and refresh options.
+Search requires `--icp-description` describing your actual target audience. For your own product, describe its actual audience, problem, desired outcome, and exclusions. Latest tweets are fetched by default; up to five backend workers score reply suitability and ICP fit. Scores are ranking signals, not proof of intent. The skill returns ranked opportunities with ICP reasons, a reply angle, and context readiness, then always provides a concrete reply-generation next step. If replies were already requested, it generates them through the CLI; otherwise it offers a simple candidate choice. Style retrieves additional messages when local writing is insufficient; select original texts without a separate authorship confirmation. Generated style summaries are never samples. See the CLI reference for limits and refresh options.
 
 ## Fast mode and request timeout
 
@@ -258,8 +293,9 @@ The client timeout is **20 minutes (1,200,000 ms)** per request, including readi
 
 | Result | Next step |
 | --- | --- |
-| `INVALID_INPUT` | Check the named field and confirmed human samples. Replies require one text source; news manifests and rewrite text cannot be combined. Supply an account directly or in your context. |
+| `INVALID_INPUT` | Check the named field and selected original writing samples. Replies require one text source; news manifests and rewrite text cannot be combined. Supply an account directly or in your context. |
 | `ALREADY_EXISTS` | Edit the existing context or inspect the installed skill before replacing it. |
+| `INSTALLATION_ERROR` | Check the installation file and permissions in `SANDHIVE_HOME` (default: `~/.sandhive`). Existing invalid files are not overwritten. |
 | `no_draft` | Review the supplied conversation or choose another. The API may not provide the exact reason. |
 | `RATE_LIMITED` | Respect `retry_after` in JSON output before trying again. |
 | `TIMEOUT` / `NETWORK_ERROR` | The request may have reached the server. Avoid repeatedly submitting the same request; see [API notes](docs/api.md). |
