@@ -2,6 +2,7 @@ import { CliError } from './errors.js';
 import { getInstallationId, apiHeaders } from './installation.js';
 
 export const MAX_REPLY_ATTEMPTS = 5;
+export const DEFAULT_REPLY_ATTEMPTS = 1;
 
 export const REQUEST_TIMEOUT_MS = 20 * 60 * 1000;
 
@@ -108,15 +109,44 @@ export async function postJson(endpoint, payload, { fetchImpl = globalThis.fetch
     body = await response.text();
   } catch (error) {
     const timeout = error.name === 'TimeoutError' || error.name === 'AbortError';
+    const rawCode = error.cause?.code ?? error.code;
+    const categories = {
+      ENOTFOUND: ['dns', 'DNS lookup failed.', false], EAI_AGAIN: ['dns', 'DNS lookup temporarily failed.', false],
+      ECONNREFUSED: ['connection', 'The destination refused the connection.', false],
+      ECONNRESET: ['connection', 'The connection was reset.', true],
+      EACCES: ['permission', 'The environment denied network access.', false],
+      EPERM: ['permission', 'The environment denied network access.', false],
+      CERT_HAS_EXPIRED: ['tls', 'The TLS certificate has expired.', false],
+      DEPTH_ZERO_SELF_SIGNED_CERT: ['tls', 'The TLS certificate is not trusted.', false],
+      UNABLE_TO_VERIFY_LEAF_SIGNATURE: ['tls', 'The TLS certificate chain could not be verified.', false],
+      SELF_SIGNED_CERT_IN_CHAIN: ['tls', 'The TLS certificate chain is not trusted.', false],
+      ERR_TLS_CERT_ALTNAME_INVALID: ['tls', 'The TLS certificate does not match the host.', false],
+      UND_ERR_CONNECT_TIMEOUT: ['connection', 'Connecting to the destination timed out.', false],
+      UND_ERR_SOCKET: ['connection', 'The connection closed unexpectedly.', true],
+    };
+    const [category, reason, mayHaveReached] = timeout ? ['timeout', 'The request timed out.', true]
+      : categories[rawCode] ?? ['network', 'The network request failed.', true];
+    const endpointUrl = new URL(endpoint);
+    const hints = { dns: 'Check the API hostname and DNS availability.', tls: 'Check the system clock, trusted certificates and proxy configuration.',
+      permission: 'Use the host-supported network approval for this destination.', connection: 'Check service availability and proxy/network settings.',
+      timeout: 'Check whether generation completed before submitting again.', network: 'Check connectivity; this error alone does not establish a host-policy rejection.' };
     throw new CliError(timeout ? 'TIMEOUT' : 'NETWORK_ERROR',
-      timeout ? 'The request timed out. It may have reached the server; check before retrying.'
-        : 'The API request failed. It may have reached the server; check before retrying.');
+      `${reason} ${mayHaveReached || response ? 'It may have reached the server; check before retrying.' : 'No API request body was delivered.'}`, {
+        details: { category, ...(categories[rawCode] ? { reason_code: rawCode } : {}),
+          endpoint: `${endpointUrl.origin}${endpointUrl.pathname}`, request_may_have_reached_server: Boolean(response) || mayHaveReached,
+          hint: hints[category] },
+      });
   }
   if (!response.ok) {
     throw new CliError(response.status === 429 ? 'RATE_LIMITED' : 'API_ERROR',
       `The API returned HTTP ${response.status}.`, {
         retryable: response.status === 429,
         retryAfter: response.headers.get('Retry-After'),
+        details: { category: 'http', http_status: response.status,
+          endpoint: `${new URL(endpoint).origin}${new URL(endpoint).pathname}`, request_may_have_reached_server: true,
+          hint: response.status === 429 ? 'Respect Retry-After before sending more requests.'
+            : response.status === 401 || response.status === 403 ? 'Check access to the service; an HTTP response is not a local sandbox denial.'
+              : response.status === 404 ? 'Check the CLI version and API route.' : 'Check service status before submitting again.' },
       });
   }
   let parsed;
@@ -155,10 +185,11 @@ export function buildPostRequest(input, context) {
   return { endpoint: rewrite ? REWRITE_POST_URL : GENERATE_POST_URL, payload };
 }
 
-export async function generateReply(payload, { endpoint = GENERATE_REPLY_URL, field = 'reply', ...options } = {}) {
+export async function generateReply(payload, { endpoint = GENERATE_REPLY_URL, field = 'reply', maxAttempts = DEFAULT_REPLY_ATTEMPTS, ...options } = {}) {
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > MAX_REPLY_ATTEMPTS) invalid('attempts must be an integer from 1 to 5.');
   const isReply = endpoint === GENERATE_REPLY_URL && field === 'reply';
   const request = isReply ? { ...payload, t: 1 } : payload;
-  const limit = isReply ? MAX_REPLY_ATTEMPTS : 1;
+  const limit = isReply ? maxAttempts : 1;
   for (let attempt = 1; attempt <= limit; attempt++) {
     const response = await postJson(endpoint, request, options);
     const empty = isReply && response && typeof response === 'object' && !Array.isArray(response)

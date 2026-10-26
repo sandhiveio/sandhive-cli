@@ -1,6 +1,6 @@
 # SandHive CLI
 
-> **Beta - active development. Update this repository before using the CLI.** Commands and API contracts may change.
+> **Beta - active development.** Commands and API contracts may change. Updates are optional; review changes before updating.
 
 **Give your agent your writing voice. Turn project updates and X conversations into drafts you can review.**
 
@@ -111,12 +111,13 @@ Requires **Node.js 22 or later**. Install from source while the npm release is b
 
 ```sh
 git clone https://github.com/sandhiveio/sandhive-cli.git
-cd sandhive-cli
-npm link
-sandhive --help
+node sandhive-cli/bin/sandhive.js --help
+node sandhive-cli/bin/sandhive.js doctor --json
 ```
 
-## Update before use
+Keep the checkout in an accessible workspace directory and invoke its `bin/sandhive.js` with Node.js from the project you want to use. No global package install, PATH change or administrator access is required. The commands below use `sandhive` as shorthand for `node <path-to-checkout>/bin/sandhive.js`. An optional `npm link` from the checkout creates that shortcut when you prefer it.
+
+## Optional updates
 
 From your `sandhive-cli` checkout:
 
@@ -130,9 +131,9 @@ Installed agent skills are copies: after updating the repository, refresh those 
 
 ## Installation identity
 
-The first CLI invocation, including `--help`, `--version` or a dry run, creates a random UUID in `~/.sandhive/installation.json`. Subsequent runs reuse it across projects and CLI updates. This identifies the CLI's local user profile, not a project or X account; it is not derived from hardware or personal information. Set `SANDHIVE_HOME` to a persistent directory to use a separate installation store, for example in a container.
+The CLI computes `shf1_<sha256>` in memory from existing OS information: hostname, home-directory path, platform and architecture, with a SandHive-specific namespace. No identity files, hardware probes or subprocesses are used. The raw inputs are not sent. The fingerprint is stable across projects and CLI updates while those inputs remain the same. Changing the host/profile can change it; cloned environments with identical inputs can share it. It is an approximate profile identifier, not proof of a unique physical installation or an anonymous identity.
 
-Every SandHive API request includes `X-SandHive-Installation-Id: <uuid>`. JSON request bodies are unchanged. Previews show this header without making a network request. The ID is not sent to GitHub update checks or other API origins. Creation is local and does not register the installation on the server until a live API request is made. Deleting the identity file starts a new identity on the next run. An unreadable or invalid store produces `INSTALLATION_ERROR` before any API request, rather than silently changing identity. The ID is not an authentication token or an idempotency key.
+Every SandHive API request includes `X-SandHive-Installation-Id: shf1_<sha256>`. JSON bodies are unchanged. Previews show the header without a network request. It is not sent to GitHub update checks or other API origins. Old `installation.json` files and `SANDHIVE_HOME` are no longer read or written; upgrading changes the former UUID to this fingerprint. This removes the identity-file permission requirement; host network permissions still apply. The ID is not an authentication token or an idempotency key.
 
 ## Use with your agent
 
@@ -200,6 +201,8 @@ sandhive init --product "A tool for organizing user feedback" --audience "Early-
 
 This creates `.sandhive/context.json` locally without an API request. Edit it as your product changes. Add only verified facts; repeat `--fact` as needed. Style samples are supplied separately in the next step. Existing profiles are never overwritten. The default `.sandhive` directory gets its own Git ignore file.
 
+The profile belongs to the project where the agent runs, not the CLI package. Keep the working directory at your project root and invoke the CLI by its absolute path if it is installed elsewhere. Each project has its own `.sandhive/context.json`, `.sandhive/style.json` and agent-managed `.sandhive/posts.json`. Automatic loading never falls back to the package, home or parent directories. Explicit profile flags can select another file when intended.
+
 ### 2. Retrieve your style first
 
 With an agent, reuse original writing already available in local samples, files or accessible user dialogue first. If more is needed, retrieve account messages with `sandhive style --account your_handle --json`. The agent selects usable originals and saves them with source metadata without asking for a separate authorship declaration. Manual examples are a last resort for the remaining gap.
@@ -238,7 +241,7 @@ Check the facts, tone, and contribution to the conversation. Edit the text and p
 
 For a longer conversation, use `--file conversation.txt` instead of `--text`. You can also draft without a saved profile by passing `--account your_handle --style-file .sandhive/style.json`.
 
-Reply requests send the conversation, account identifier, human sample text, and any explicitly supplied context guidance to the hosted service. Context is loaded only when you pass `--context`; source files are not uploaded. Keep secrets and confidential material out of requests.
+Reply requests send the conversation, account identifier, human sample text and guidance from the selected project context. Draft commands automatically load `.sandhive/context.json` and, when no input/context samples are present, `.sandhive/style.json` from the current project. Explicit `--context` and `--style-file` select other files; `--no-profile` skips automatic loading. Previews include local profile source paths; source files are not uploaded wholesale. Keep secrets and confidential material out of these profiles and requests.
 
 ## Draft a post
 
@@ -272,7 +275,7 @@ Add `--json` for one structured result. The existing JSON input remains availabl
 sandhive draft reply --input examples/reply.json --style-file .sandhive/style.json --dry-run --json
 ```
 
-Results distinguish a draft, no draft, a preview, and an error. Commands do not prompt, and reply requests retry empty text up to five total attempts; other requests and failures are not retried automatically. See the [CLI reference](skills/sandhive/references/cli.md) for fields and exit codes, and [API notes](docs/api.md) for service details and verification status.
+Results distinguish a draft, no draft, a preview, and an error. Commands do not prompt. Replies use one attempt by default; retries for empty responses require an explicit `--attempts` limit. Network/timeout/HTTP failures are not retried. See the [CLI reference](skills/sandhive/references/cli.md) for fields and exit codes, and [API notes](docs/api.md) for service details and verification status.
 
 ## Find conversations and retrieve candidate samples
 
@@ -287,15 +290,17 @@ Search requires `--icp-description` describing your actual target audience. For 
 
 All five API requests send numeric `"fast": 1` by default. This requests faster generation with slightly lower quality. JSON input can set `"fast": 0` to disable fast mode; boolean values are normalized to 0 or 1. The reply `--fast` flag explicitly enables the default mode.
 
-The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Reply requests retry empty text up to five total attempts; network/timeout/HTTP errors and other methods are not retried automatically. A server or proxy may enforce its own shorter timeout.
+The request timeout defaults to **20 minutes (1,200,000 ms)** and can be set with `--timeout <seconds>` (1-1200). Replies use one attempt by default; explicitly chosen `--attempts` can increase the limit to five for empty successful responses. Network/timeout/HTTP errors are not retried. A server or proxy may enforce a shorter timeout.
 
 ## Troubleshooting
+
+Run `sandhive doctor --json` to check Node.js, the fingerprint and readable local profile without network access or file writes. Live network/HTTP errors include `error.details.category`, endpoint, delivery uncertainty and a corrective hint. Safe codes distinguish DNS, TLS, connection and environment permission failures without exposing raw exceptions or response bodies.
 
 | Result | Next step |
 | --- | --- |
 | `INVALID_INPUT` | Check the named field and selected original writing samples. Replies require one text source; news manifests and rewrite text cannot be combined. Supply an account directly or in your context. |
 | `ALREADY_EXISTS` | Edit the existing context or inspect the installed skill before replacing it. |
-| `INSTALLATION_ERROR` | Check the installation file and permissions in `SANDHIVE_HOME` (default: `~/.sandhive`). Existing invalid files are not overwritten. |
+| `NETWORK_ERROR` details | Use `error.details.category`, safe reason code, endpoint and hint to distinguish DNS, TLS, connection and permission failures. Raw exception messages are not exposed. |
 | `no_draft` | Review the supplied conversation or choose another. The API may not provide the exact reason. |
 | `RATE_LIMITED` | Respect `retry_after` in JSON output before trying again. |
 | `TIMEOUT` / `NETWORK_ERROR` | The request may have reached the server. Avoid repeatedly submitting the same request; see [API notes](docs/api.md). |
@@ -309,4 +314,25 @@ Distribution and service terms are being finalized. This repository does not cur
 
 ### Empty reply retries
 
-`/cli/generate-tweet` always receives `t: 1`. On a successful JSON response with missing, null, false, empty, or whitespace-only reply text, the CLI makes up to five attempts total (the initial request plus four retries). It stops as soon as text is returned; after exhaustion it returns `no_draft`. Reply results include `attempts`. Each attempt can incur generation usage and has its own 20-minute timeout. No retries are made for HTTP errors, API errors, malformed responses, network failures, or timeouts. Post/search/style calls are unchanged. A dry run makes no attempts.
+`/cli/generate-tweet` always receives `t: 1`. Default: one attempt per conversation. Explicit `--attempts <1-5>` permits more attempts for empty successful responses only; network, timeout and HTTP/API errors are not retried. Results include actual `attempts`. Each request can incur generation usage. `--timeout <seconds>` accepts 1-1200 (default 1200). A dry run makes no attempts. Use `draft replies --input replies.json --concurrency <1-5> --progress --json` for different conversations concurrently, with independent ordered results; parallelism does not increase the default per-item attempt count.
+
+### Generate different replies concurrently
+
+Save the actual conversation texts in a JSON array (use `user.account` per item when no account is saved):
+
+```json
+[
+  { "tweet": "Actual text of the first selected conversation" },
+  { "tweet": "Actual text of the second selected conversation" }
+]
+```
+
+With your saved project context and original style samples:
+
+```sh
+sandhive draft replies --input replies.json --concurrency 3 --progress --json
+```
+
+Choose 1-5 workers; the default is one, or a saved context `reply_concurrency`. Batch size is 1-20 conversations. Each uses one API attempt unless `--attempts` is chosen. The result contains one entry per input in input order and keeps successful drafts if another fails. Progress goes to stderr; stdout remains one JSON object. `--dry-run` previews every payload and the maximum request count. This is concurrency in a running command, not a detached/resumable job. See the [CLI reference](skills/sandhive/references/cli.md) for input precedence and result fields.
+
+Search results now include `received_count`, `skipped_count` and warnings. Invalid rows or provider placeholders are removed individually; valid posts remain available. A malformed top-level response still fails explicitly.

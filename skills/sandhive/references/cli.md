@@ -16,7 +16,7 @@ These are placeholders, not usable samples. Original human writing matters for s
 sandhive init --product "..." --audience "..." --account your_handle --voice "..." --fact "..."
 ```
 
-Creates `.sandhive/context.json`, never overwriting a profile. Add selected original writing as `style_samples` before drafting. Only an explicit `--context` loads it. Product/audience/facts and voice preferences supplement reply requests; source metadata is not sent. Post rewriting gets its factual material from the supplied text. News generation uses an explicit manifest when supplied, otherwise the server manifest. Local context facts are not uploaded automatically.
+Creates `.sandhive/context.json`, never overwriting a profile. Draft commands automatically load this file from the current project; add selected original writing as `style_samples`, or save `.sandhive/style.json` for automatic fallback. Precedence: explicit input samples, explicit style file, context samples, default style file. Invalid selected samples do not silently fall back. Explicit paths select different files; `--no-profile` disables automatic loading while still allowing explicitly supplied files. Previews identify profile source paths. Product/audience/facts and voice preferences supplement reply requests; source metadata is not sent. Post rewriting gets factual material from the supplied text. News generation uses an explicit manifest when supplied, otherwise the server manifest.
 
 ## Replies
 
@@ -39,7 +39,7 @@ Text/file supplies material to `/cli/rewrite-twitter-post`; no text source uses 
 
 ## Output and errors
 
-`--dry-run` returns endpoint, method, headers and exact wire payload without sending. Headers include `X-SandHive-Installation-Id`, a persistent UUID v4 created locally on the first invocation in `~/.sandhive/installation.json` (override the directory with `SANDHIVE_HOME`). It is reused across projects/updates and sent only to SandHive API, not GitHub or other origins. Help and previews also initialize this local file. An unreadable or invalid store produces `INSTALLATION_ERROR` before any API request; the file is not silently replaced. This ID is not authentication or an idempotency key.
+`--dry-run` returns endpoint, method, headers and exact wire payload without sending. Headers include `X-SandHive-Installation-Id: shf1_<sha256>`, computed in memory from hostname, home path, platform and architecture with a SandHive namespace. No identity files, hardware probes or subprocesses are used; raw inputs are not sent. It is stable across projects/updates when those inputs are unchanged, but is not guaranteed unique across cloned environments. The fingerprint goes only to SandHive API, not GitHub or other origins. Old UUID files and `SANDHIVE_HOME` are ignored. This ID is not authentication or an idempotency key; host network permissions still apply.
 
 `--json` emits one JSON result and never prompts. `draft` contains `draft.text`, `draft.platform: x`, and raw `api` metadata; `no_draft` contains `draft: null`. No exact skip reason is inferred. `preview` describes the request. Errors contain `error.code`, message, retryability, and optional retry-after.
 
@@ -53,13 +53,13 @@ Exit codes: 0 success including no draft; 1 API/network failure; 2 invalid input
 
 `sandhive find --query "..." --query "..." --icp-description "..." --json` searches and scores posts. User searches require --icp-description "..." describing the project's own audience. Latest is the default. Scoring runs in up to five backend workers and returns gate_score (reply suitability) and icp_score (ICP fit), sorted by ICP fit then reply suitability. Options: max-items 1-50, query-type Latest/Top, min-icp-score numeric. `sandhive style --account handle --json` retrieves candidate messages; refresh and max-items 1-200 are optional. Both accept --input JSON, --dry-run, and --json. JSON fields: queries plus icp_description for search, user_id for style; do not combine JSON input with command flags.
 
-Search returns opportunities/tweets with source evidence; empty results are valid. Style returns style/samples and cache metadata; the bare CLI never automatically saves or applies samples. The agent can select original message texts and save local style_samples without a separate user authorship confirmation. Reuse local writing before retrieving more. Generated summaries cannot be samples. Provider placeholders are rejected. Requests may incur scraping/model usage; no automatic retries.
+Search returns opportunities/tweets with source evidence; empty results are valid. Invalid records and provider placeholders are excluded individually with `received_count`, `skipped_count` and `warnings`; valid records remain usable. A malformed top-level response is still an error. The `api.tweets` array is filtered too. Style returns style/samples and cache metadata; the bare CLI never automatically saves or applies samples. The agent can select original message texts and save local style_samples without a separate user authorship confirmation. Reuse local writing before retrieving more. Generated summaries cannot be samples. Requests may incur scraping/model usage.
 
 ## Fast mode and request timeout
 
 All five API requests send numeric `"fast": 1` by default. This requests faster generation with slightly lower quality. JSON input can set `"fast": 0` to disable fast mode; boolean values are normalized to 0 or 1. The reply `--fast` flag explicitly enables the default mode.
 
-The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Reply requests retry empty text up to five total attempts; network/timeout/HTTP errors and other methods are not retried automatically. A server or proxy may enforce its own shorter timeout.
+The request timeout defaults to **20 minutes (1,200,000 ms)** and can be set with `--timeout <seconds>` (1-1200). Replies use one attempt by default; explicitly chosen `--attempts` can increase the limit to five for empty successful responses. Network/timeout/HTTP errors are not retried. A server or proxy may enforce a shorter timeout.
 
 ## News manifest input
 
@@ -73,4 +73,27 @@ Reuse available local original writing from saved samples, accessible user dialo
 
 ### Empty reply retries
 
-`/cli/generate-tweet` always receives `t: 1`. On a successful JSON response with missing, null, false, empty, or whitespace-only reply text, the CLI makes up to five attempts total (the initial request plus four retries). It stops as soon as text is returned; after exhaustion it returns `no_draft`. Reply results include `attempts`. Each attempt can incur generation usage and has its own 20-minute timeout. No retries are made for HTTP errors, API errors, malformed responses, network failures, or timeouts. Post/search/style calls are unchanged. A dry run makes no attempts.
+`/cli/generate-tweet` always receives `t: 1`. Default: one attempt per conversation. Explicit `--attempts <1-5>` permits more attempts for empty successful responses only; network, timeout and HTTP/API errors are not retried. Results include actual `attempts`. Each request can incur generation usage. `--timeout <seconds>` accepts 1-1200 (default 1200). A dry run makes no attempts. Use `draft replies --input replies.json --concurrency <1-5> --progress --json` for different conversations concurrently, with independent ordered results; parallelism does not increase the default per-item attempt count.
+
+## Concurrent replies to different conversations
+
+Create a JSON array with one normal reply input per conversation. Account and samples can come from the automatically loaded profile:
+
+```json
+[
+  { "tweet": "Actual text of the first selected conversation" },
+  { "tweet": "Actual text of the second selected conversation" }
+]
+```
+
+```sh
+sandhive draft replies --input replies.json --concurrency 3 --progress --json
+```
+
+These are input placeholders, not conversations to submit unchanged. Limits: 1-20 items, 1-5 concurrent workers (default 1), one attempt per conversation by default. `--attempts` explicitly changes the per-item limit. A saved context `reply_concurrency` can supply the worker preference. Per-item samples override shared samples; otherwise explicit `--style-file`, context samples or default style apply. All inputs validate before any generation starts. `--dry-run` returns all payloads, headers, concurrency and the maximum request count without sending.
+
+Output is one `status: batch` JSON object with `results` in input order, per-item `index`, `status`, draft/error, and summary counts. Completed items remain available if another fails. Exit 1 means at least one item failed; inspect successful items too. `--progress` writes start, waiting and completion messages to stderr, so stdout remains valid JSON. This is asynchronous concurrency within a running CLI command, not a detached job or resumable server task. No duplicate variants of the same reply are generated automatically.
+
+## Local diagnostics and network errors
+
+`sandhive doctor --json` checks Node.js, the computed fingerprint and readable project profile without a network request or file writes. It does not prove network/service availability. Network failures keep `NETWORK_ERROR` or `TIMEOUT` and include safe `error.details`: category (`dns`, `tls`, `connection`, `permission`, `timeout`, `network`), allowlisted reason code when known, endpoint without query, delivery uncertainty and a corrective hint. HTTP errors include the status. Raw exceptions, response bodies and unknown reason strings are not exposed. These categories do not establish that ChatGPT rejected a request. Never disable TLS verification or work around a host denial as a retry strategy.

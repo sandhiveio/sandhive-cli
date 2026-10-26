@@ -49,9 +49,21 @@ export function buildStyleRequest(input) {
 }
 export async function searchTweets(payload, options) {
   const api = await postJson(SEARCH_TWEETS_URL, payload, options);
-  if (!api || !Array.isArray(api.tweets) || !api.tweets.every(row => row && typeof row.text === 'string' && row.text.trim() && typeof row.icp_score === 'number' && Number.isFinite(row.icp_score))) throw new CliError('INVALID_RESPONSE', 'The API returned an unexpected search format.');
-  api.tweets.forEach(row => rejectProviderPlaceholder(row.text));
-  return { schema_version: 1, status: 'opportunities', tweets: api.tweets, count: api.tweets.length, api };
+  if (!api || !Array.isArray(api.tweets) || api.error) throw new CliError('INVALID_RESPONSE', 'The API returned an unexpected search format.');
+  const tweets = [];
+  const skipped = [];
+  api.tweets.forEach((row, index) => {
+    if (!row || typeof row.text !== 'string' || !row.text.trim() || typeof row.icp_score !== 'number' || !Number.isFinite(row.icp_score)) {
+      skipped.push({ index, reason: 'invalid_fields' }); return;
+    }
+    try { rejectProviderPlaceholder(row.text); }
+    catch { skipped.push({ index, reason: 'provider_placeholder' }); return; }
+    tweets.push(row);
+  });
+  return { schema_version: 1, status: 'opportunities', tweets, count: tweets.length,
+    received_count: api.tweets.length, skipped_count: skipped.length,
+    warnings: skipped.length ? [{ code: 'SKIPPED_SEARCH_RESULTS', message: `Skipped ${skipped.length} invalid or placeholder search results.`, skipped }] : [],
+    api: { ...api, tweets, count: tweets.length } };
 }
 export async function userStyle(payload, options) {
   const api = await postJson(USER_STYLE_URL, payload, options);

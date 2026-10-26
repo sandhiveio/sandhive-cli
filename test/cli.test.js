@@ -29,7 +29,7 @@ async function run(args, content = input, fetchImpl = async () => { throw new Er
   const exitCode = await main(args, {
     stdout: { write: value => { out += value; } },
     stderr: { write: value => { err += value; } },
-    stdin: Readable.from([typeof content === 'string' ? content : JSON.stringify(content)]), fetchImpl, cwd,
+    stdin: Readable.from([typeof content === 'string' ? content : JSON.stringify(content)]), fetchImpl, cwd: cwd ?? identityDirectory,
   });
   return { exitCode, out, err, result: out ? JSON.parse(out) : undefined };
 }
@@ -106,7 +106,7 @@ test('plain text, UTF-8 files, and stdin map to the same reply input', async () 
   });
 });
 
-test('saved context is only used when explicitly requested', async () => {
+test('missing style still fails with an automatically loaded context', async () => {
   await withProject(async cwd => {
     await run(['init', '--product', 'Local project facts', '--audience', 'Founders', '--account', 'builder', '--json'], input, undefined, cwd);
     const result = await run(['draft', 'reply', '--text', input.tweet, '--account', 'builder', '--dry-run', '--json'], input, undefined, cwd);
@@ -369,7 +369,7 @@ test('new commands accept stdin JSON and reject invalid or mixed inputs before n
 
 test('new methods handle malformed responses and HTTP failures', async () => {
   for (const [args, body] of [
-    [['find', '--query', 'pain', '--icp', 'arc'], '{"tweets":[{"text":"pain"}]}'],
+    [['find', '--query', 'pain', '--icp', 'arc'], '{"tweets":"not an array"}'],
     [['style', '--account', 'builder'], '{"style":"","samples":[],"cached":true}'] ]) {
     const result = await run([...args, '--json'], input, async () => new Response(body));
     assert.equal(result.result.error.code, 'INVALID_RESPONSE');
@@ -385,9 +385,16 @@ test('provider placeholder data is rejected for both search and voice', async ()
     [['find', '--query', 'pain', '--icp', 'sandhive'], { tweets: [{ text: placeholder, icp_score: 0 }] }]
   ]) {
     const result = await run([...args, '--json'], input, async () => new Response(JSON.stringify(body)));
-    assert.equal(result.exitCode, 1);
-    assert.equal(result.result.error.code, 'INVALID_RESPONSE');
-    assert.match(result.result.error.message, /placeholder/);
+    if (args[0] === 'find') {
+      assert.equal(result.exitCode, 0);
+      assert.equal(result.result.count, 0);
+      assert.equal(result.result.skipped_count, 1);
+      assert.equal(result.result.warnings[0].skipped[0].reason, 'provider_placeholder');
+    } else {
+      assert.equal(result.exitCode, 1);
+      assert.equal(result.result.error.code, 'INVALID_RESPONSE');
+      assert.match(result.result.error.message, /placeholder/);
+    }
   }
 });
 
@@ -436,7 +443,7 @@ test('beta notice is present in JSON without breaking structured output', async 
   assert.match(result.result.notice, /beta and active development/);
   assert.equal(result.err, '');
   const error = await run(['unknown', '--json']);
-  assert.match(error.result.notice, /Update your checkout/);
+  assert.match(error.result.notice, /Updates are optional/);
 });
 
 test('human output includes the beta notice on stderr', async () => {
@@ -518,9 +525,9 @@ test('custom ICP description supports description-only and combined requests', a
   }
 });
 
-test('reply generation retries empty text up to five total attempts and always sends t', async () => {
+test('reply generation retries empty text only with an explicit attempt limit and always sends t', async () => {
   let calls = 0;
-  const result = await generateReply(input, { fetchImpl: async (url, options) => {
+  const result = await generateReply(input, { maxAttempts: 5, fetchImpl: async (url, options) => {
     assert.equal(JSON.parse(options.body).t, 1);
     const replies = [{}, { reply: null }, { reply: '' }, { reply: false }, { reply: 'Finally a reply' }];
     return new Response(JSON.stringify(replies[calls++]));
@@ -529,7 +536,7 @@ test('reply generation retries empty text up to five total attempts and always s
   assert.equal(result.attempts, 5);
   assert.equal(result.draft.text, 'Finally a reply');
   calls = 0;
-  const exhausted = await generateReply(input, { fetchImpl: async () => {
+  const exhausted = await generateReply(input, { maxAttempts: 5, fetchImpl: async () => {
     calls++;
     return new Response('{"reply":"   "}');
   } });

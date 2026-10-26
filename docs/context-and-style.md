@@ -20,7 +20,7 @@ The agent uses sources available in its session. It does not assume access to ot
 
 ## What project context contains
 
-The local profile in `.sandhive/context.json` contains the product description, audience, verified facts, voice preferences, and source information. The agent can also prepare a manifest for the post workflow. Keep assumptions separate from facts and refresh the profile as your product changes.
+The local profile in `.sandhive/context.json` inside the agent's active project contains the product description, audience, verified facts, voice preferences and source information. Run CLI commands with that project as the working directory, even if the CLI executable lives elsewhere; do not change into the package checkout. Each project owns its `.sandhive` directory, style samples and local history. There is no automatic package-level or global profile fallback. The agent can also prepare a manifest for the post workflow. Keep assumptions separate from facts and refresh the profile as your product changes.
 
 The bare CLI does not discover project facts by scanning your repository. Create a profile from your project's directory:
 
@@ -28,7 +28,7 @@ The bare CLI does not discover project facts by scanning your repository. Create
 sandhive init --product "A tool for organizing user feedback" --audience "Early-stage founders" --account your_handle --voice "Concise, practical, no hype" --fact "Feedback can be grouped by topic"
 ```
 
-Replace these example values. Creating context makes no drafting API call and does not overwrite an existing profile. Pass `--context .sandhive/context.json` when drafting a reply to load it. For a post rewrite, supply a factual work update; for news generation, include verified project facts in the manifest. See the [post workflow](../skills/sandhive/references/post-workflow.md).
+Replace these example values. Creating context makes no drafting API call and does not overwrite an existing profile. Subsequent draft commands automatically load this project's saved context; `--context` can explicitly select another file. For a post rewrite, supply a factual work update; for news generation, include verified project facts in the manifest. See the [post workflow](../skills/sandhive/references/post-workflow.md).
 
 ## Use your existing posts as style samples
 
@@ -44,7 +44,7 @@ Choose at least three original posts or messages you wrote yourself. Use example
 
 These are placeholders, not valid writing samples to submit unchanged. Original human writing matters for a useful style match; exclude known AI drafts, rewrites and other authors' quotations. The agent selects usable originals from available sources and fills authorship metadata without requiring the user to certify them. The CLI validates metadata and source references; it cannot independently prove who wrote a post.
 
-Supply `--style-file .sandhive/style.json`, or save the array as `style_samples` in your context. Tone or length preferences supplement the samples; they do not replace them. Reuse local writing first. If more is needed, `sandhive style` retrieves candidates; select original message texts and continue without a separate authorship question. Ask for missing examples only when available sources cannot supply three usable samples.
+Draft commands load `.sandhive/context.json` and fallback `.sandhive/style.json` from the current project automatically. You can supply explicit `--context`/`--style-file` paths or disable automatic loading with `--no-profile`. Explicit input samples take precedence over context/default samples. Tone or length preferences supplement the samples; they do not replace them. Reuse local writing first. If more is needed, `sandhive style` retrieves candidates; select original message texts and continue without a separate authorship question. Ask for missing examples only when available sources cannot supply three usable samples.
 
 ## Preview, generate, and review
 
@@ -56,6 +56,6 @@ Replace the conversation text. The preview shows the request without making a dr
 
 ## What stays local and what is sent
 
-Context and style files are stored locally. Drafting sends the supplied text, account identifier, and writing guidance derived from context and samples to SandHive's hosted service. Source code is not uploaded automatically. Requests may be retained; do not include secrets or confidential material. The CLI's default `.sandhive` directory gets a Git ignore file; check your own storage and sharing choices.
+Context and style files are stored locally and selected automatically from the current project, unless disabled or overridden. Drafting sends the supplied text, account identifier and writing guidance derived from context and samples to SandHive's hosted service. A hashed host/profile fingerprint is included in a request header without writing an identity file. Source code is not uploaded automatically. Requests may be retained; do not include secrets or confidential material. The CLI's default `.sandhive` directory gets a Git ignore file; check your own storage and sharing choices.
 
 For exact fields, supported commands, and failure handling, see the [CLI reference](../skills/sandhive/references/cli.md) and [API notes](api.md).

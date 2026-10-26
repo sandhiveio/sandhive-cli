@@ -2,7 +2,7 @@
 
 All routes use POST JSON on `https://api.sandhive.io`:
 
-All five service requests carry the HTTP header `X-SandHive-Installation-Id` containing the CLI's persistent UUID v4. This is transport metadata; it is not added to JSON bodies, credentials or writing samples. The CLI creates it locally on first activity (including help/previews) in `~/.sandhive/installation.json`, or the directory set by `SANDHIVE_HOME`, and reuses it across projects and updates. Previews include the exact headers. No registration request is made during creation. The header identifies an installation profile; it provides no authentication, authorization or request deduplication. Server-side storage/aggregation of this header is not implemented by the CLI. Other API origins and GitHub update checks do not receive it.
+All five service requests carry `X-SandHive-Installation-Id: shf1_<sha256>`. The CLI computes it in memory using a SandHive namespace plus hostname, home path, platform and architecture. No identity files, hardware probes or subprocesses are used; raw inputs are not sent. Stable inputs yield a stable fingerprint across projects and updates; host/profile changes can change it, and clones can share it. Old UUID files and `SANDHIVE_HOME` are ignored. It is transport metadata, not a JSON field, credential or idempotency key. Server-side storage/aggregation is not implemented by the CLI. Other API origins and GitHub update checks do not receive it.
 
 | CLI mode | Route | Existing backend fields | Response field |
 | --- | --- | --- | --- |
@@ -16,7 +16,7 @@ The news generator accepts optional `manifest` as non-empty text. It uses that t
 
 `style_samples` is a local CLI field: at least three original messages, each with non-empty text/source and `authorship: human`. Only sample text is sent in `externalRelies`. Reply context supplements these samples with explicitly labeled factual context/preferences. No sample can be replaced with an AI-generated voice description. The CLI cannot independently prove authorship; the agent selects original writing from available sources without requiring a separate user declaration.
 
-A successful response contains the mode's text field as a non-empty string or false. False normalizes to `no_draft`; metadata is preserved without interpreting scores as probabilities or `wait` as seconds. HTTP errors, non-JSON responses, and incorrect text fields are explicit errors. Replies retry empty text up to five total attempts; there are no authentication, idempotency, or spending-limit contracts yet. Inputs are processed by a hosted service; do not send secrets or confidential material.
+A successful response contains the mode's text field as a non-empty string or false. False normalizes to `no_draft`; metadata is preserved without interpreting scores as probabilities or `wait` as seconds. HTTP errors, non-JSON responses, and incorrect text fields are explicit errors. Replies use one attempt by default, with explicitly configurable empty-response attempts; there are no authentication, idempotency, or spending-limit contracts yet. Inputs are processed by a hosted service; do not send secrets or confidential material.
 
 ## Discovery and sample retrieval
 
@@ -26,7 +26,7 @@ POST /cli/search-score-tweets uses queries, icp_description (non-empty audience/
 
 All five API requests send numeric `"fast": 1` by default. This requests faster generation with slightly lower quality. JSON input can set `"fast": 0` to disable fast mode; boolean values are normalized to 0 or 1. The reply `--fast` flag explicitly enables the default mode.
 
-The client timeout is **20 minutes (1,200,000 ms)** per request, including reading the response body. Reply requests retry empty text up to five total attempts; network/timeout/HTTP errors and other methods are not retried automatically. A server or proxy may enforce its own shorter timeout.
+The request timeout defaults to **20 minutes (1,200,000 ms)** and can be set with `--timeout <seconds>` (1-1200). Replies use one attempt by default; explicitly chosen `--attempts` can increase the limit to five for empty successful responses. Network/timeout/HTTP errors are not retried. A server or proxy may enforce a shorter timeout.
 
 ## Request manifest
 
@@ -47,4 +47,4 @@ Search defaults to `query_type: Latest`. The backend scores individual tweets in
 
 ### Empty reply retries
 
-`/cli/generate-tweet` always receives `t: 1`. On a successful JSON response with missing, null, false, empty, or whitespace-only reply text, the CLI makes up to five attempts total (the initial request plus four retries). It stops as soon as text is returned; after exhaustion it returns `no_draft`. Reply results include `attempts`. Each attempt can incur generation usage and has its own 20-minute timeout. No retries are made for HTTP errors, API errors, malformed responses, network failures, or timeouts. Post/search/style calls are unchanged. A dry run makes no attempts.
+`/cli/generate-tweet` always receives `t: 1`. Default: one attempt per conversation. Explicit `--attempts <1-5>` permits more attempts for empty successful responses only; network, timeout and HTTP/API errors are not retried. Results include actual `attempts`. Each request can incur generation usage. `--timeout <seconds>` accepts 1-1200 (default 1200). A dry run makes no attempts. Use `draft replies --input replies.json --concurrency <1-5> --progress --json` for different conversations concurrently, with independent ordered results; parallelism does not increase the default per-item attempt count.

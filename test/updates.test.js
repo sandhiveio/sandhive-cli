@@ -9,7 +9,7 @@ const gitImpl = async () => ({ stdout: `${root}\n${commit}\n` });
 
 test('local setup and previews never opt into background update requests', () => {
   const interactive = { stdoutIsTTY: true, stderrIsTTY: true };
-  for (const args of [[], ['--help'], ['--version'], ['init', '--product', 'Test'],
+  for (const args of [[], ['--help'], ['--version'], ['doctor'], ['init', '--product', 'Test'],
     ['skill', 'install', '--agent', 'codex', '--target', '.'], ['review'], ['auth'], ['usage'],
     ['find', '--dry-run'], ['style', '--json'], ['draft', 'post', '--dry-run'],
     ['draft', 'reply', '--help'], ['unknown']]) {

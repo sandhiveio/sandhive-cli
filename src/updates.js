@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
-export const BETA_NOTICE = 'SandHive CLI is in beta and active development. Update your checkout before use: git pull --ff-only (from the sandhive-cli directory).';
+export const BETA_NOTICE = 'SandHive CLI is in beta and active development. Updates are optional; review changes before updating your checkout.';
 const exec = promisify(execFile);
 const installation = fileURLToPath(new URL('../', import.meta.url));
 
@@ -27,7 +27,7 @@ export async function checkForUpdates({ fetchImpl = globalThis.fetch, gitImpl = 
     if (!response.ok) return null;
     const result = await response.json();
     if (result.status === 'ahead' || result.status === 'diverged') {
-      return 'A newer SandHive CLI commit is available on main. Update your checkout before use: git pull --ff-only. If branches have diverged, review your local changes first.';
+      return 'A newer SandHive CLI commit is available on main. Optional update: git pull --ff-only. If branches have diverged, review your local changes first.';
     }
   } catch { /* Update checks are best effort and never fail a command. */ }
   return null;
