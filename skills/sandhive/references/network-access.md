@@ -28,7 +28,7 @@ Sample source metadata is validated locally; only sample texts are sent as writi
 
 Interactive live commands may also make a best-effort GET to `api.github.com/repos/sandhiveio/sandhive-cli/compare/<installed-commit>...main` to check updates. This sends the installation commit identifier, not project content. Set `SANDHIVE_NO_UPDATE_CHECK=1` to disable it. JSON runs, non-interactive runs, previews, and local commands (`init`, `skill install`, help/version and planned commands) skip this check. Git installation and updates contact GitHub separately; they do not authorize SandHive data submission.
 
-`--dry-run` is local: it shows the exact endpoint, method, headers (including fingerprint) and wire payload without sending it. `doctor` is also read-only and local. `init` and `skill install` write only their requested project files. These commands do not prove that live network access works. Draft commands load the current project's saved context/style by default; inspect previews or use `--no-profile` when needed. The CLI does not publish to X.
+`--dry-run` is local: it shows the exact endpoint, method, headers (including fingerprint) and wire payload without sending it. `doctor` and `skill path` are also read-only and local. `init` and the optional `skill install` project-copy command write only their requested files. Bootstrap by reading the bundled skill, not by copying it into protected project metadata folders. These commands do not prove that live network access works. Draft commands load the current project's saved context/style by default; inspect previews or use `--no-profile` when needed. The CLI does not publish to X.
 
 ## First-run notice and execution
 
@@ -44,6 +44,7 @@ The installer prints an explicit authorization prompt for the person to review a
 
 ## When access fails
 
+- **Command process could not start:** errors such as `setup refresh had errors` occur before the CLI runs. Report this as a host startup failure, not an API response or authorization refusal. On affected Windows hosts, a sandbox-created `.agents` directory can have an owner/ACL that prevents the sandbox refresh from applying protection. Stop creating metadata copies, preserve existing files and direct recovery to the host's supported sandbox diagnostics. Do not promise automatic recovery or change Windows permissions yourself. Claim zero API requests only when the execution history shows no live command was launched; an ambiguous network failure has different delivery uncertainty.
 - **Host approval denied:** name the exact action and summarize the stated denial. Follow the host's supported approval or user-override flow if available. Continue local preparation; do not switch tools, encode the payload, or use another route to perform the denied transfer.
 - **Sandbox/network restriction:** request only the needed host-supported permission for the concrete command and destination. A task request or API notice does not reconfigure sandboxing or organization policy. Do not ask for unrestricted external requests or disable protections.
 - **CLI `NETWORK_ERROR` or `TIMEOUT`:** the request may already have reached the server. Report that uncertainty; do not blame ChatGPT without host evidence or retry automatically.

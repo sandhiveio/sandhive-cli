@@ -47,7 +47,11 @@ Exit codes: 0 success including no draft; 1 API/network failure; 2 invalid input
 
 ## Skill installation and planned commands
 
+`sandhive skill path --json` returns the bundled skill directory as `path`, its `SKILL.md` as `entrypoint`, `mode: bundled` and `copied: false`. It makes no network request, copies no files and does not register the skill with a host. Agents reuse a current loaded skill or read this entrypoint and references directly. This is the default first-run path; no `.agents`, `.claude` or `.codex` folder needs to be created. Persistent registration, if specifically requested, uses the host-supported installer with its normal permissions.
+
 `sandhive skill install --agent codex|claude --target <directory>` copies the skill and references into the project's host-specific skill folder and refuses overwrite. Installation is local, skips update checks, and returns a user-sendable live authorization prompt as `next_step` (also printed in terminal output). It names `https://api.sandhive.io`, selected input data and at most seven first-batch API requests: optional style lookup, one search up to 20 results, one post (one or two requests) and up to three replies. An agent already carrying out authorized live setup continues; otherwise the person reviews and sends the prompt. A printed prompt is not consent. Installation, simulation and dry-run requests do not authorize live service calls, and the skill cannot grant host permissions. See [network access and task scope](network-access.md). `review`, `auth`, and `usage` return `NOT_IMPLEMENTED` without network calls.
+
+The project-copy command is optional, not an agent bootstrap requirement. Creating protected metadata directories from a sandbox process can prevent subsequent command startup on affected Windows hosts. Do not create a project copy just because the skill exists in a different directory. This CLI cannot repair host ACLs; it must not change ownership, disable sandboxing or retry through a different execution route to overcome a denial.
 
 ## Discovery and sample retrieval
 

@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
-import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { main } from '../src/cli.js';
@@ -241,7 +241,25 @@ test('invalid input and unsupported flags produce structured errors', async () =
   }
 });
 
-test('skill installation copies all references and refuses to overwrite', async () => {
+test('bundled skill discovery leaves a fresh project unchanged and usable without network', async () => {
+  await withProject(async cwd => {
+    await writeFile(join(cwd, 'README.md'), 'An existing client project.');
+    const before = await readdir(cwd);
+    const result = await run(['skill', 'path', '--json'], undefined, async () => assert.fail('No network for bundled skill discovery'), cwd);
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.result.mode, 'bundled');
+    assert.equal(result.result.copied, false);
+    assert.equal(result.result.entrypoint, join(result.result.path, 'SKILL.md'));
+    await readFile(result.result.entrypoint, 'utf8');
+    await readFile(join(result.result.path, 'references', 'cli.md'), 'utf8');
+    assert.deepEqual(await readdir(cwd), before);
+    const doctor = await run(['doctor', '--json'], undefined, async () => assert.fail('No network for doctor'), cwd);
+    assert.equal(doctor.exitCode, 0);
+    assert.deepEqual(await readdir(cwd), before);
+  });
+});
+
+test('optional project skill copy preserves all references and refuses to overwrite', async () => {
   const target = await mkdtemp(join(tmpdir(), 'sandhive-skill-test-'));
   try {
     for (const agent of ['codex', 'claude']) {

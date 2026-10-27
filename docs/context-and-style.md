@@ -4,13 +4,13 @@ Your agent already knows your project and what you built. SandHive uses that con
 
 ## Use with Codex or Claude Code
 
-After [installing the CLI](../README.md#install), open the project you want to write about and install the skill:
+After [installing the CLI](../README.md#install), open the project you want to write about. Reuse the current skill if already loaded; otherwise locate the bundled instructions:
 
 ```sh
-sandhive skill install --agent codex --target .
-# Or:
-sandhive skill install --agent claude --target .
+sandhive skill path --json
 ```
+
+Read the returned `entrypoint` and referenced files directly. No project metadata folder is created, and no persistent registration is needed for this task. If persistent discovery is specifically requested, use the host-supported installer. Do not automatically create `.agents`, `.claude` or `.codex` during setup. See [client installation](installation.md).
 
 Give your agent this starting prompt, replacing the placeholders:
 

@@ -32,19 +32,17 @@ Posts and replies are separate workflows. The news branch makes two API requests
 
 The skill records reviewed posts in `.sandhive/posts.json`. Tell your agent when a post actually went to publication so it can remember the exact text and covered work for the next update. Approval alone is not a publication handoff. The bare CLI does not maintain this registry automatically.
 
-## AI agents: install the skill first
+## AI agents: load the skill first
 
-**If you are an AI agent, install and read the SandHive skill before using the CLI for this project.** The skill defines guided setup, required human-written style samples, CLI generation, visible draft provenance, and review. CLI help alone does not contain the full workflow.
+**If you are an AI agent, reuse the current SandHive skill when already loaded. Otherwise read it directly from the CLI checkout before using the drafting workflow.** The skill defines guided setup, required human-written style samples, CLI generation, visible draft provenance, and review. CLI help alone does not contain the full workflow.
 
-After installing the CLI, run this from the user's project directory:
+From the user's project directory, find the bundled instructions:
 
 ```sh
-sandhive skill install --agent codex --target .
-# For Claude Code:
-sandhive skill install --agent claude --target .
+sandhive skill path --json
 ```
 
-Read `.agents/skills/sandhive/SKILL.md` for Codex or `.claude/skills/sandhive/SKILL.md` for Claude Code, then begin the guided first run. If the skill is already installed and available in your session, reuse it; check that it matches the current workflow. The installer refuses to overwrite existing copies. For another host, read [the bundled skill](skills/sandhive/SKILL.md) and follow that host's supported skill installation process.
+Read the returned `entrypoint` and referenced files, then continue the guided first run. This command makes no network request, copies no files and does not register a skill with the host. Do not create `.agents`, `.claude` or `.codex` as a startup requirement. Persistent registration is optional and should use the host-supported installer when specifically requested. See [client installation](docs/installation.md), including Windows sandbox troubleshooting.
 
 ## Why use SandHive with your agent?
 
@@ -125,7 +123,7 @@ From your `sandhive-cli` checkout:
 git pull --ff-only
 ```
 
-The CLI displays the beta notice on every run (in JSON results, it appears as `notice`). Interactive live service commands also check GitHub for newer commits, without downloading or applying updates. The check has short time limits and failures do not fail your command. Local commands (`init`, `skill install`, help/version and planned commands), JSON output, dry runs, and non-interactive runs skip this network check. Set `SANDHIVE_NO_UPDATE_CHECK=1` to disable automatic checks. If Git reports divergent branches or local changes, review them before updating.
+The CLI displays the beta notice on every run (in JSON results, it appears as `notice`). Interactive live service commands also check GitHub for newer commits, without downloading or applying updates. The check has short time limits and failures do not fail your command. Local commands (`init`, `doctor`, `skill path`, `skill install`, help/version and planned commands), JSON output, dry runs, and non-interactive runs skip this network check. Set `SANDHIVE_NO_UPDATE_CHECK=1` to disable automatic checks. If Git reports divergent branches or local changes, review them before updating.
 
 Installed agent skills are copies: after updating the repository, refresh those copies as needed so your agent uses the current workflow.
 
@@ -137,15 +135,15 @@ Every SandHive API request includes `X-SandHive-Installation-Id: shf1_<sha256>`.
 
 ## Use with your agent
 
-From the directory of the project you want to talk about, install the skill for your agent:
+From the directory of the project you want to talk about, reuse the already loaded skill or locate its bundled instructions:
 
 ```sh
-sandhive skill install --agent codex --target .
-# Or:
-sandhive skill install --agent claude --target .
+sandhive skill path --json
 ```
 
-The installer copies files locally and prints a first-run prompt (`next_step` in JSON) with explicit authorization for HTTPS requests to `https://api.sandhive.io`, the selected data and a bounded first batch. Review and send that prompt to your agent. A prompt printed by a tool is not consent; the installer and skill cannot authorize transfers themselves. An agent already carrying out live setup you authorized continues within that scope without another routine confirmation.
+Your agent reads the returned `entrypoint` and referenced files without copying them into project metadata directories. For persistent discovery in future sessions, use your host's supported skill installer as a separate optional step. The CLI's `skill install --agent codex|claude --target <project>` command remains an explicit project-copy operation; it is not required for first use. Do not run it automatically inside a protected agent sandbox. It refuses to overwrite existing files and prints a first-run prompt (`next_step` in JSON).
+
+The live prompt below includes explicit authorization for HTTPS requests to `https://api.sandhive.io`, the selected data and a bounded first batch. Review and send it to your agent. A prompt printed by a tool is not consent; the installer and skill cannot authorize transfers themselves. An agent already carrying out live setup you authorized continues within that scope without another routine confirmation.
 
 The first batch is one post and up to three replies from one search with up to 20 results. It permits at most seven API requests: one optional account-style lookup only when local writing is insufficient, one search, one post (one rewrite, or news generation then rewrite), and up to three replies with one attempt each. A work update with local samples needs at most five. These are agent workflow limits, not server-enforced spending controls. The agent announces the actual selected facts, writing samples, X handle, brief/conversation and query data before sending. The service may retain inputs and use scraping/models. No separate human-authorship declaration is needed.
 

@@ -20,6 +20,7 @@ Usage:
   sandhive draft reply --input <file|-> [--context <file>] [--fast] [--dry-run] [--json]
   sandhive draft replies --input <batch.json|-> [--concurrency <1-5>] [--attempts <1-5>] [--progress] [--json]
   sandhive doctor [--json]
+  sandhive skill path [--json]
   sandhive skill install --agent <codex|claude> --target <project-directory> [--json]
   sandhive draft post --manifest <brief> --account <handle> --style-file <file> [--dry-run] [--json]
   sandhive draft post [--text <draft> | --file <file|-> | --input <file|->] --context <file> [--json]
@@ -61,6 +62,7 @@ Options:
 Every draft requires at least three sourced human-written style samples.
 Drafts require human review. This CLI does not publish to X.
 Draft commands load .sandhive/context.json and style.json from the current project when available.
+For agent setup, reuse the loaded skill or read skill path. Project skill copies are optional.
 `;
 
 async function loadText(path, stdin) {
@@ -285,6 +287,14 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       emit(result, json, stdout);
       return 0;
     }
+    if (command === 'skill path') {
+      const path = fileURLToPath(new URL('../skills/sandhive/', import.meta.url));
+      const entrypoint = resolve(path, 'SKILL.md');
+      emit({ schema_version: 1, status: 'ok', path, entrypoint, mode: 'bundled', copied: false,
+        message: `Read the bundled SandHive skill at ${entrypoint} and its referenced files. No files were copied or registered with your agent. Reuse an already loaded skill when current; persistent installation is optional and uses the host's supported installer.`,
+      }, json, stdout);
+      return 0;
+    }
     if (command === 'skill install') {
       if (!['codex', 'claude'].includes(values.agent) || !values.target) {
         throw new CliError('INVALID_INPUT', 'Provide --agent codex|claude and --target <project-directory>.', { exitCode: 2 });
@@ -300,6 +310,7 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
         'I authorize HTTPS POST requests to https://api.sandhive.io for this batch, sending my X handle, selected project facts, selected original writing texts, post material, search phrases and selected public conversation texts, plus the computed installation fingerprint. I understand that the hosted service may retain these inputs and use scraping/models. Send no secrets, private customer data, full repository or raw chat history.',
         'Use at most seven API requests: one optional account-style lookup only if local samples are insufficient, one search with up to 20 results, one post (one rewrite request, or news generation followed by one rewrite), and up to three reply requests. Use one attempt per conversation and no automatic retries. Announce the actual selected data, requests and count before sending; within this scope, continue without another routine confirmation. Honor host-required approvals and do not publish.',
         'Use the available Node.js runtime and a workspace checkout; no global install or PATH change is required. Choose the project from available context and keep CLI commands running from its directory. Store the profile and history in its .sandhive folder. Collect original writing locally and build my voice profile without a separate authorship declaration. Derive two or three problem-based search phrases. Offer sequential or concurrent generation of different replies when the preference is unknown; reuse a chosen preference. Show reviewed drafts with source links and preserve completed results if another request fails.',
+        'Reuse an already loaded current SandHive skill. Otherwise run skill path --json and read the returned entrypoint and references directly from the CLI checkout. Do not create or copy .agents, .claude or .codex folders as a first-run requirement. If persistent registration is specifically requested, use the host-supported installer with its normal permissions.',
       ].join('\n\n');
       emit({ schema_version: 1, status: 'ok',
         message: `Installed the SandHive skill at ${target}. No network request was made.\n\nIf you already authorized live setup, your agent can continue within that scope. Otherwise, review and send this prompt to authorize a first live batch. Installation, this generated prompt and the skill itself do not grant permission. Simulation or dry-run requests stay local:\n${nextStep}\n\nYour agent host may still require a separate network approval.`,
