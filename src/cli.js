@@ -49,7 +49,7 @@ Options:
   --manifest-file <file> Read a UTF-8 news-post brief (file path only)
   --fast              Use fast mode (already enabled by default; slightly lower quality)
   --attempts <n>      Reply attempts per conversation (1-5, default: 1)
-  --concurrency <n>   Parallel conversations for draft replies (1-5, default: 1)
+  --concurrency <n>   Parallel conversations for draft replies (1-5, default: 3)
   --timeout <seconds> Request timeout (1-1200, default: 1200)
   --progress          Show progress on stderr, including with --json
   --dry-run           Preview the request without sending it
@@ -227,7 +227,7 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       }
       const payloads = buildReplyBatch(input, profile.context, profile.samples);
       if (values.fast) payloads.forEach(payload => { payload.fast = 1; });
-      const concurrency = batchLimit(values.concurrency ?? profile.context?.reply_concurrency, 1, 5, 'concurrency');
+      const concurrency = batchLimit(values.concurrency ?? profile.context?.reply_concurrency, 3, 5, 'concurrency');
       const result = values['dry-run'] ? { schema_version: 1, status: 'preview', endpoint: GENERATE_REPLY_URL, method: 'POST',
         headers: apiHeaders(installationId), payloads, concurrency, attempts_per_item: maxAttempts, max_requests: payloads.length * maxAttempts }
         : await execute('Reply batch', () => generateReplyBatch(payloads, { concurrency, maxAttempts, timeoutMs, fetchImpl, installationId,
@@ -306,10 +306,10 @@ export async function main(argv, { stdout = process.stdout, stderr = process.std
       await mkdir(dirname(target), { recursive: true });
       await cp(source, target, { recursive: true, force: false, errorOnExist: true });
       const nextStep = [
-        'Use SandHive to set up the active project and run a first live batch now: one post and up to three replies to relevant conversations.',
+        'Use SandHive to set up the active project and run a first live batch now: one post and up to three replies if suitable conversations are found.',
         'I authorize HTTPS POST requests to https://api.sandhive.io for this batch, sending my X handle, selected project facts, selected original writing texts, post material, search phrases and selected public conversation texts, plus the computed installation fingerprint. I understand that the hosted service may retain these inputs and use scraping/models. Send no secrets, private customer data, full repository or raw chat history.',
         'Use at most seven API requests: one optional account-style lookup only if local samples are insufficient, one search with up to 20 results, one post (one rewrite request, or news generation followed by one rewrite), and up to three reply requests. Use one attempt per conversation and no automatic retries. Announce the actual selected data, requests and count before sending; within this scope, continue without another routine confirmation. Honor host-required approvals and do not publish.',
-        'Use the available Node.js runtime and a workspace checkout; no global install or PATH change is required. Choose the project from available context and keep CLI commands running from its directory. Store the profile and history in its .sandhive folder. Collect original writing locally and build my voice profile without a separate authorship declaration. Derive two or three problem-based search phrases. Offer sequential or concurrent generation of different replies when the preference is unknown; reuse a chosen preference. Show reviewed drafts with source links and preserve completed results if another request fails.',
+        'Use the available Node.js runtime and a workspace checkout; no global install or PATH change is required. Choose the project from available context and keep CLI commands running from its directory. Store the profile and history in its .sandhive folder. Collect original writing locally and build my voice profile without a separate authorship declaration. Derive two or three problem-based search phrases. Generate different replies in parallel with up to three workers by default; honor a current instruction or saved concurrency preference. Show reviewed drafts with source links and preserve completed results if another request fails.',
         'Reuse an already loaded current SandHive skill. Otherwise run skill path --json and read the returned entrypoint and references directly from the CLI checkout. Do not create or copy .agents, .claude or .codex folders as a first-run requirement. If persistent registration is specifically requested, use the host-supported installer with its normal permissions.',
       ].join('\n\n');
       emit({ schema_version: 1, status: 'ok',

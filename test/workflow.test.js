@@ -176,6 +176,20 @@ test('batch CLI previews all requests offline, reports progress separately, and 
   });
 });
 
+test('reply concurrency defaults to three and explicit options override saved preference', async () => {
+  await withProject(async cwd => {
+    const input = [{ tweet: 'First' }, { tweet: 'Second' }];
+    const args = ['draft', 'replies', '--input', '-', '--dry-run'];
+    const defaults = await run(args, { cwd, input });
+    assert.equal(defaults.result.concurrency, 3);
+    assert.equal(defaults.result.max_requests, 2);
+    assert.equal(defaults.result.attempts_per_item, 1);
+    await writeFile(join(cwd, '.sandhive', 'context.json'), JSON.stringify({ ...context, reply_concurrency: 1 }));
+    assert.equal((await run(args, { cwd, input })).result.concurrency, 1);
+    assert.equal((await run([...args, '--concurrency', '2'], { cwd, input })).result.concurrency, 2);
+  });
+});
+
 test('invalid single draft JSON is rejected before profile enrichment or sending', async () => {
   await withProject(async cwd => {
     for (const input of [null, [], 1, 'text']) {

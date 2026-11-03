@@ -30,3 +30,15 @@ On one observed native Windows Codex installation, creating `.agents` from a san
 The default flow above avoids creating that directory. It does not repair an installation whose host permissions are already inconsistent. For an existing failure, use the host's supported sandbox recovery and collect its diagnostic log; do not automatically delete or modify `.agents`. See the official [Windows sandbox troubleshooting guide](https://learn.chatgpt.com/docs/windows/windows-sandbox).
 
 Distinguish host process startup failures, host approval denials and SandHive HTTP/network errors. A successful local doctor does not prove that the next process or a live API call will succeed. Preserve known completed results and report what actually ran.
+
+## Get the CLI
+
+From an accessible workspace, clone the source and run local diagnostics:
+
+```sh
+git clone https://github.com/sandhiveio/sandhive-cli.git
+node sandhive-cli/bin/sandhive.js --help
+node sandhive-cli/bin/sandhive.js doctor --json
+```
+
+Keep project tasks in the user’s project directory, invoking the executable by absolute path when needed. An optional npm link in the checkout creates the sandhive shortcut; it is not required. See [optional updates](terminal-workflow.md#optional-updates).

@@ -24,8 +24,8 @@ export function buildReplyBatch(input, context, samples) {
   });
 }
 
-export async function generateReplyBatch(payloads, { concurrency = 1, onProgress, ...options } = {}) {
-  const workers = batchLimit(concurrency, 1, 5, 'concurrency');
+export async function generateReplyBatch(payloads, { concurrency = 3, onProgress, ...options } = {}) {
+  const workers = batchLimit(concurrency, 3, 5, 'concurrency');
   const results = new Array(payloads.length);
   let next = 0;
   let completed = 0;
