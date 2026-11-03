@@ -1,10 +1,34 @@
 # SandHive CLI
 
-**Turn project updates into X posts. Find relevant conversations and draft replies in your voice, with your coding agent.**
+![SandHive — Your project. Your voice. Posts and replies for X, with your coding agent.](docs/images/readme-header.png)
+
+[Quick start](#start-with-your-coding-agent) · [Real example](#a-conversation-worth-joining) · [CLI reference](skills/sandhive/references/cli.md) · [Data & privacy](#what-leaves-your-computer)
 
 For founders and builders already working with a coding agent: use the project context it has and examples of your own writing. SandHive generates drafts through its hosted API; you review and publish manually.
 
 > Beta: active development. Requires Node.js 22+. No npm release yet; updates are optional.
+
+## A conversation worth joining
+
+![Recorded SandHive CLI example: a solo builder asks for help with distribution, and SandHive drafts a relevant reply for manual review.](docs/images/readme-conversation.png)
+
+[View the source conversation](https://x.com/cobble_dev_ten/status/2111625371158471116) · Recorded 18 Oct 2026. This is an illustrated archive of a CLI result, not a live agent screenshot.
+
+<details>
+<summary>Read the original post and exact recorded reply</summary>
+
+**@cobble_dev_ten**
+
+> @not_matt200 Hi, Matt!!  I'm solo builder too.
+>
+> But I'm stuck with distribution😅
+> How should I cope with😍
+
+**SandHive CLI — recorded draft, styled from human-written samples**
+
+I'm building Sandhive to find the X threads that need your expertise and give you a ready reply, turning distribution from a chore into a quick step.
+
+</details>
 
 ## What you can do
 
@@ -28,7 +52,14 @@ The prompt authorizes at most seven API requests, including an optional style lo
 
 ### Start a live first batch
 
-> Set up SandHive for the active project and run a first live batch: one post and up to three replies if suitable conversations are found. I authorize HTTPS POST requests to https://api.sandhive.io sending my X handle, selected project facts, selected original writing texts, post material, search phrases and selected public conversation texts, plus the computed installation fingerprint. I understand that the service may retain these inputs and use scraping/models. Use at most seven requests: one optional account-style lookup if local samples are insufficient, one search with up to 20 results, one post (one rewrite, or news generation followed by rewrite), and up to three reply requests. Use one attempt per conversation and no automatic retries. Keep commands in this project and store its profile in .sandhive. Use local writing first without a separate authorship declaration. Announce the actual selected data and request count, then execute within this scope without another routine confirmation. Generate different replies in parallel with up to three workers by default; honor my current or saved concurrency preference. Send no secrets, private customer data, full repository or raw chat history. Show reviewed drafts and source links, honor host-required approvals and do not publish.
+<details>
+<summary>Read and copy the full live setup prompt</summary>
+
+```text
+Set up SandHive for the active project and run a first live batch: one post and up to three replies if suitable conversations are found. I authorize HTTPS POST requests to https://api.sandhive.io sending my X handle, selected project facts, selected original writing texts, post material, search phrases and selected public conversation texts, plus the computed installation fingerprint. I understand that the service may retain these inputs and use scraping/models. Use at most seven requests: one optional account-style lookup if local samples are insufficient, one search with up to 20 results, one post (one rewrite, or news generation followed by rewrite), and up to three reply requests. Use one attempt per conversation and no automatic retries. Keep commands in this project and store its profile in .sandhive. Use local writing first without a separate authorship declaration. Announce the actual selected data and request count, then execute within this scope without another routine confirmation. Generate different replies in parallel with up to three workers by default; honor my current or saved concurrency preference. Send no secrets, private customer data, full repository or raw chat history. Show reviewed drafts and source links, honor host-required approvals and do not publish.
+```
+
+</details>
 
 ### Simulate locally
 
@@ -41,7 +72,7 @@ Changing from simulation to live execution requires your authorization. A saved 
 
 Live HTTPS requests go to api.sandhive.io with selected project facts, original writing texts, X handle, queries, post material and selected public conversation text, plus a computed installation fingerprint. The hosted service may retain inputs and use scraping/models. Do not include secrets, private customer data, raw chat history or the repository. Host permissions still apply.
 
-Project profiles and agent-managed publication history stay in your project's .sandhive/ folder. Only selected request material is submitted. Use --dry-run to inspect payloads without API calls. See [data scope](skills/sandhive/references/network-access.md) and [installation identity](docs/installation-identity.md).
+Project profiles and agent-managed publication history stay in your project's .sandhive/ folder. Only selected request material is submitted. Use `--dry-run` to inspect payloads without API calls. See [data scope](skills/sandhive/references/network-access.md) and [installation identity](docs/installation-identity.md).
 
 ## Drafts and review
 
@@ -51,7 +82,13 @@ Tell your agent when a post actually went to publication so it can update the lo
 
 ## For agents and terminal users
 
-Reuse a current loaded [SandHive skill](skills/sandhive/SKILL.md), or run node <checkout>/bin/sandhive.js skill path --json and read the returned entrypoint and relevant references. Keep command working directories at the user's project. No skill copy, global package installation or PATH change is required. Persistent registration is optional; see [installation](docs/installation.md).
+Reuse a current loaded [SandHive skill](skills/sandhive/SKILL.md), or run the following command and read the returned entrypoint and relevant references. Keep command working directories at the user's project.
+
+```sh
+node <checkout>/bin/sandhive.js skill path --json
+```
+
+No skill copy, global package installation or PATH change is required. Persistent registration is optional; see [installation](docs/installation.md).
 
 - [Terminal workflow and commands](docs/terminal-workflow.md)
 - [Task-specific prompts](docs/task-prompts.md)

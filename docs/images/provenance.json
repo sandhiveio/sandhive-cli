@@ -1,0 +1,12 @@
+{
+  "source": "lib/agent-demo-data.json in sandhive-radar-front",
+  "recordedAt": "18 Oct 2026",
+  "conversation": {
+    "author": "cobble_dev_ten",
+    "text": "@not_matt200 Hi, Matt!!  I'm solo builder too.\n\nBut I'm stuck with distribution😅\nHow should I cope with😍",
+    "url": "https://x.com/cobble_dev_ten/status/2111625371158471116",
+    "fit": "Why this fits: a solo builder explicitly asks for help with distribution — a problem SandHive’s agent workflow aims to help with."
+  },
+  "draft": "I'm building Sandhive to find the X threads that need your expertise and give you a ready reply, turning distribution from a chore into a quick step.",
+  "note": "Exact archived CLI output. Composition is illustrative, not a screenshot of an agent UI."
+}
