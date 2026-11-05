@@ -1,4 +1,4 @@
-# Client installation without project metadata writes
+# Install SandHive CLI and its agent skill
 
 The first run needs Node.js 22+, a CLI checkout, readable skill instructions and a project profile. It does not need a project copy of the skill or a global package installation.
 
@@ -14,7 +14,17 @@ Keep the CLI checkout path separate from the project's working directory. Updati
 
 When the user specifically requests persistent registration, use the agent host's supported skill installer with its normal permission flow. Reuse an existing current installation instead of creating another copy. If a restart or a new turn is needed for discovery, explain that; an agent can read the bundled instructions to complete an already authorized task in the current session.
 
-The CLI also retains an explicit project-copy command for environments where that installation is supported:
+From the project where you want to use SandHive, install the skill with the skills CLI (requires Node.js 22+ and npx):
+
+```sh
+npx skills add sandhiveio/sandhive-cli --skill sandhive
+```
+
+Choose your agent when prompted. The command installs skill instructions and supporting references for that project. Install the SandHive CLI executable separately using [Get the CLI](#get-the-cli), or reuse an existing current checkout. Skill installation does not send project data to the SandHive API or authorize live search or draft requests.
+
+Use a terminal or installer supported by your agent host, with its normal permissions. Run `npx skills update` to update skills installed through the skills CLI; this can update other installed skills too. A new session may be needed for your agent to discover the skill.
+
+The SandHive CLI also retains an explicit project-copy command for environments where that installation is supported:
 
 ```sh
 sandhive skill install --agent codex --target <project-directory>
