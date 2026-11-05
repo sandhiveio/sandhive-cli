@@ -50,6 +50,18 @@ Different replies run in parallel with up to three workers by default. A current
 
 The prompt authorizes at most seven API requests, including an optional style lookup. It is not a server-enforced spending limit. Review the complete prompt before sending; reading or installing it does not authorize requests.
 
+### Install the skill
+
+For automatic discovery in future agent sessions, run this from the project where you want to use SandHive (requires Node.js 22+ and npx):
+
+```sh
+npx skills add sandhiveio/sandhive-cli --skill sandhive
+```
+
+Choose your agent when prompted. This installs the skill instructions and supporting references. Install the SandHive CLI executable separately using [Get the CLI](docs/installation.md#get-the-cli), or reuse an existing current checkout. Then choose a live batch or local simulation below.
+
+Persistent registration is optional: your agent can also read the bundled instructions directly from a CLI checkout. Installing the skill does not send project data to the SandHive API or authorize live requests.
+
 ### Start a live first batch
 
 <details>
